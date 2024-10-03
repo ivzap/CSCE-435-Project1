@@ -12,7 +12,16 @@
 
 ### 2a. Brief project description (what algorithms will you be comparing and on what architectures)
 
-- Bitonic Sort:
+- Bitonic Sort: Ethan Rutt
+    - A comparison based sorting algorithm which sorts by converting a data-set
+      that has `2 ^ k` elements where k is a positive integer into a bitonic
+      sequence.
+        - a bitonic sequence is a sequence of numbers that first increases,
+          then decreases
+        - formally, there exists an index i such that 
+          arr[0] <= arr[1] <= arr[2] <= ... <= arr[i] and 
+          arr[i] >= arr[i+1] >= arr[i+2] >= ... >= arr[n-1]
+        - The list is then sorted using a merge function
 - Sample Sort:
 - Merge Sort:
 - Radix Sort: Ivan Zaplatar
@@ -22,6 +31,44 @@
 ### 2b. Pseudocode for each parallel algorithm
 - For MPI programs, include MPI calls you will use to coordinate between processes
 
+### Bitonic Sort - Sequential
+* Bitonic Sort is an in-place sorting algorithm, so no additional allocations
+  are needed
+* This sorting algorithm works by splitting the array until you only have two
+  elements (which by definition is a bitonic sequence, if we have 2 elements a
+  and b, if a < b then the increasing part is the first two elements, and the
+  decreasing part is empty, and if a > b then we have the decreasing part be the
+  two elements and the decreasing part is empty)
+* Once the array is split properly, `bitonic_merge()` swaps if the elements
+  aren't consistent with the direction, we want all the lower elements to be on
+  the left side and the higher elements to be on the left to get a properly
+  sorted list
+* By moving them and then doing a `bitonic_merge()` we can end up with a sorted
+  list because when the `bitonic_merge()` reaches the bottom of the stack, it
+  will make a 2 element increasing bitonic sequence
+```python
+def bitonic_sort(arr: list[int], low, count, direction):
+    def bitonic_merge(arr: list[int], lowIndex, count, direction):
+        if (count > 1):
+            k = count // 2
+            for i in range(lowIndex, lowIndex + k):
+                if direction == (arr[i] > arr[i+k]):
+                    swap(arr[i], arr[i+k])
+            bitonic_merge(arr, lowIndex, k, direction)
+            bitonic_merge(arr, lowIndex + k, k, direction)
+
+    if (count > 1):
+        k = count // 2
+        bitonic_sort(arr, lowIndex, k, 1) # recurse on left half increasing
+        bitonic_sort(arr, lowIndex + k, k, 0) # recurse on right half decreasing
+        bitonic_merge(arr, lowIndex, count, direction) # merge to actually sort
+
+```
+
+### Bitonic Sort - Parallel
+* We can split up the array 
+```python
+```
 
 #### Radix Sort - Sequential(Naive Allocation)
 This version of radix, while easier to understand initially, has a problem. Appending elements to a vector like structure will cause dynamic allocation, which is slow.
