@@ -72,7 +72,7 @@ def bitonic_sort(arr: list[int], low, count, direction):
 ```python
 ```
 
-#### Radix Sort - Sequential(Naive Allocation)
+### Radix Sort - Sequential(Naive Allocation)
 This version of radix, while easier to understand initially, has a problem. Appending elements to a vector like structure will cause dynamic allocation, which is slow.
 ```python
 def sort_arr_on_digit(arr, d):
@@ -103,7 +103,7 @@ def radix_sort(arr):
     return arr
 ```
 
-#### Radix Sort - Sequential(Better)
+### Radix Sort - Sequential(Better)
 ```python
 def sort_arr_on_digit(arr, d):
         // buckets elements based on digits. Buckets[i] are
@@ -146,7 +146,7 @@ def radix_sort(arr):
     return arr
 ```
 
-#### Radix Sort - Parallel(Better)
+### Radix Sort - Parallel(Better)
 ```python
 def sort_arr_on_digit(arr, d):
         // MPI workers, master each get a portion of array
