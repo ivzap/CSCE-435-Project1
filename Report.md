@@ -233,7 +233,7 @@ def merge(left, right):
 
 ### Merge Sort - Parallel
 * This uses the sequential functions from above
-```
+```python
 def main:
     arr = input array to be sorted
     MPI_Scatter to distribute arr across all processes store in local
