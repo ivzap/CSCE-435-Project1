@@ -1,14 +1,14 @@
 # CSCE 435 Group project
 
-## 0. Group number: 
+## 0. Group number: 6
 
-## 1. Group members:
+## 1. Group members: (Communicate via Discord)
 1. Ivan Zaplatar
-2. Second
+2. Grant Martinez
 3. Third
 4. Fourth
 
-## 2. Project topic (e.g., parallel sorting algorithms)
+## 2. Project topic: Parallel Sorting Algorithms
 
 ### 2a. Brief project description (what algorithms will you be comparing and on what architectures)
 
@@ -23,7 +23,8 @@
           arr[i] >= arr[i+1] >= arr[i+2] >= ... >= arr[n-1]
         - The list is then sorted using a merge function
 - Sample Sort:
-- Merge Sort:
+- Merge Sort: Grant Martinez
+    - Divide and conquer algorithm that sorts recursively sorts smaller arrays until it reaches a size of 1. Then using comparisions it merges the arrays back together to produce a sorted array.
 - Radix Sort: Ivan Zaplatar
 
 
@@ -194,6 +195,60 @@ def radix_sort(arr):
         
     return arr
 ```
+
+### Merge Sort - Sequential
+```python
+def mergesort(arr):
+    if length of arr <= 1:
+        return
+    middle = length of arr / 2
+    left = arr[:middle]
+    right = arr[middle:]
+
+    sortedLeft = mergesort(left)
+    sortedRight = mergesort(right)
+
+    return merge(sortedLeft, sortedRight)
+
+def merge(left, right):
+    result = []
+    i = 0
+    j = 0
+
+    while i < length of left and j < length of right):
+        if (left[i] < right[i]):
+            append left[i] to result
+            i++;
+        else:
+            append right[j] to result
+            j++
+
+    while (i < length of left)
+        append left[i] to result
+    while (j < length of right):
+        append right[j] to result
+
+    return result
+```
+
+### Merge Sort - Parallel
+* This uses the sequential functions from above
+```
+def main:
+    arr = input array to be sorted
+    MPI_Scatter to distribute arr across all processes store in local
+
+    if Master process:
+        mergesort(local)
+        for each process:
+            MPI_Recv sorted portion of arr
+            local = merge(local, received portion)
+    else:
+        local = mergesort(local)
+        MPI_Send local
+    
+```
+
 
 
 ### 2c. Evaluation plan - what and how will you measure and compare
