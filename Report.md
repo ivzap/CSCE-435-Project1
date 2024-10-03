@@ -26,6 +26,7 @@
 - Merge Sort: Grant Martinez
     - Divide and conquer algorithm that sorts recursively sorts smaller arrays until it reaches a size of 1. Then using comparisions it merges the arrays back together to produce a sorted array.
 - Radix Sort: Ivan Zaplatar
+    - A non comparative sorting algorithm that is stable and orders elements based on their digits.
 
 
 
