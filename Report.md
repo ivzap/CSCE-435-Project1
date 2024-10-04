@@ -298,6 +298,9 @@ def parallelMergeSort(arr):
             MPI_Send local to curr_rank - active_procs/2
 
         active_procs /= 2
+
+    if curr_rank == 0:
+        return local
 ```
 
 ### Sample Sort - Sequential
