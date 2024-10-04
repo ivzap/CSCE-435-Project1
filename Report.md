@@ -23,7 +23,7 @@
           arr[i] >= arr[i+1] >= arr[i+2] >= ... >= arr[n-1]
         - The list is then sorted using a merge function
 - Sample Sort: Hayden O'Keefe
-    - Divide and conquer algorithm that utilizes quick sort. However, unlike quick sort where it choses a pivot to be used to compare with elements of array sample sort has numerous pivots that are determined by the amount of processors that are being utilized. The amount of processors determine how the array will be sectioned off into buckets. Where once the processors has there corresponding buckets it can individually sort there array.
+    - Sample sort follows a similar guideline to the divide and conquer algorithm quick sort. The sorting algorithm is not divide and conquer, however, unlike quick sort where it choses a pivot to be used to compare with elements of array sample sort has numerous pivots that are determined by the amount of processors that are being utilized. The amount of processors determine how the array will be sectioned off into buckets. Where once the processors has there corresponding buckets it can individually sort there array.
 - Merge Sort: Grant Martinez
     - Divide and conquer algorithm that sorts recursively sorts smaller arrays until it reaches a size of 1. Then using comparisions it merges the arrays back together to produce a sorted array.
 - Radix Sort: Ivan Zaplatar
@@ -249,6 +249,44 @@ def main:
         local = mergesort(local)
         MPI_Send local
     
+```
+
+### Sample Sort - Sequential
+```python
+start
+
+def SampleSort(numOfElements, numBuckets)
+    define splitter
+    define numBuckets
+
+    i = 1
+    for 1 < numBuckets
+        splitter = numOfElements / numBuckets
+    
+    QuickSort(sortedArray, first element, last element)
+
+    new array = appended sorted buckets
+
+    return new array
+
+def QuickSort(sortedaArray, first element, last element)
+
+    //quick sort local buckets
+    define pivot = array[last element]
+
+    while i < last element
+        if current_index > pivot then
+            pass
+
+        if current_index <= pivot then
+            swap_marker++
+            if current_index > swap_marker then 
+                swap(current_index, swap_marker)
+            else if current_index equals swap_marker then
+                pass
+        i++
+
+endf
 ```
 
 ### Sample Sort - Parallel
