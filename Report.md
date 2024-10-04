@@ -302,6 +302,8 @@ def parallelMergeSort(arr):
 ```
 
 ### Sample Sort - Sequential
+* [source](https://www.youtube.com/watch?v=WprjBK0p6rw)
+* [source](https://learning.oreilly.com/library/view/introduction-to-parallel/0201648652/ch09.html#ch09lev2sec11)
 ```python
 start
 
@@ -340,6 +342,8 @@ endf
 ```
 
 ### Sample Sort - Parallel
+* [source](https://www.youtube.com/watch?v=WprjBK0p6rw)
+* [source](https://learning.oreilly.com/library/view/introduction-to-parallel/0201648652/ch09.html#ch09lev2sec11)
 ```python
 start
 
@@ -356,12 +360,10 @@ def SampleSort(numOfElements, communicator)
     // bucket_size refers to how many elements a processor is required to manage
     define bucket_size = numOfElements / numProcesses
 
-    // splitters (pivots) for each individual bucket to reference in quicksort
     define local splitters = size of numProcesses
-    // collect splitters
     define collect splitters = numProcesses * (local splitters - 1)
 
-    // sort the buckets utilizing quick sort
+    // sort the buckets
     QuickSort(array, first element, last element)
 
     idx = (numProcesses - 1)
@@ -373,16 +375,34 @@ def SampleSort(numOfElements, communicator)
     // sort the buckets
     QuickSort(array, first element, last element)
 
-    // collect all splitters to account for global array
     MPI_gather(collect splitters, communicator)
 
     // sort the buckets
-    QuickSort(sorted_array, first element, last element)
+    QuickSort(array, first element, last element)
 
-    return sorted_array
+    MPI_Barrier(collect values, communicator)
+
+    //prefix sum
+
+    for idx < offset
+        if P0 < P1_offset
+            copy(P0)
+        else if P1 < P2_offset
+            copy(P1)
+        else if P2 < P3_offset
+            copy(P2)
+        else
+            copy(P3)
+
+    MPI_gather(collect splitters, communicator)
+
+     // sort the buckets
+    QuickSort(array, first element, last element)
+
+    return array
 
 
-def QuickSort(sorted_array, first element, last element)
+def QuickSort(array, first element, last element)
 
     //quick sort local buckets
     define pivot = array[last element]
@@ -398,6 +418,7 @@ def QuickSort(sorted_array, first element, last element)
             else if current_index equals swap_marker then
                 pass
         i++
+
 endf
 ```
 
