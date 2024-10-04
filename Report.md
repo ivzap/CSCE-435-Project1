@@ -6,7 +6,7 @@
 1. Ivan Zaplatar
 2. Grant Martinez
 3. Hayden O'Keefe
-4. Fourth
+4. Ethan Rutt
 
 ## 2. Project topic: Parallel Sorting Algorithms
 
@@ -17,13 +17,13 @@ Below is a list of the sorting algorithms we will be implementing and a brief de
 
 - Bitonic Sort: Ethan Rutt
     - A comparison based sorting algorithm which sorts by converting a data-set
-      that has `2 ^ k` elements where k is a positive integer into a bitonic
+      that has `2 ^ k` elements where `k` is a positive integer into a bitonic
       sequence.
         - a bitonic sequence is a sequence of numbers that first increases,
           then decreases
-        - formally, there exists an index i such that 
-          arr[0] <= arr[1] <= arr[2] <= ... <= arr[i] and 
-          arr[i] >= arr[i+1] >= arr[i+2] >= ... >= arr[n-1]
+        - formally, there exists an index `i` such that 
+          `arr[0] <= arr[1] <= arr[2] <= ... <= arr[i]` and 
+          `arr[i] >= arr[i+1] >= arr[i+2] >= ... >= arr[n-1]`
         - The list is then sorted using a merge function
 - Sample Sort: Hayden O'Keefe
     - Sample sort follows a similar guideline to the divide and conquer algorithm quick sort. The sorting algorithm is not divide and conquer, however, unlike quick sort where it choses a pivot to be used to compare with elements of array sample sort has numerous pivots that are determined by the amount of processors that are being utilized. The amount of processors determine how the array will be sectioned off into buckets. Where once the processors has there corresponding buckets it can individually sort there array.
@@ -43,7 +43,7 @@ Below is a list of the sorting algorithms we will be implementing and a brief de
   elements (which by definition is a bitonic sequence, if we have 2 elements a
   and b, if a < b then the increasing part is the first two elements, and the
   decreasing part is empty, and if a > b then we have the decreasing part be the
-  two elements and the decreasing part is empty)
+  two elements and the increasing part is empty)
 * Once the array is split properly, `bitonic_merge()` swaps if the elements
   aren't consistent with the direction, we want all the lower elements to be on
   the left side and the higher elements to be on the left to get a properly
@@ -51,6 +51,7 @@ Below is a list of the sorting algorithms we will be implementing and a brief de
 * By moving them and then doing a `bitonic_merge()` we can end up with a sorted
   list because when the `bitonic_merge()` reaches the bottom of the stack, it
   will make a 2 element increasing bitonic sequence
+* [source](https://www.youtube.com/watch?v=uEfieI0MumY)
 ```python
 def bitonic_sort(arr: list[int], low, count, direction):
     def bitonic_merge(arr: list[int], lowIndex, count, direction):
@@ -71,8 +72,45 @@ def bitonic_sort(arr: list[int], low, count, direction):
 ```
 
 ### Bitonic Sort - Parallel
-* We can split up the array 
+* We can split up the array into sections and then sort each section. The
+  bitonic merge can be performed parallel
+* The powers of two are very important for this sorting algorithm, because when
+  merging, we want to swap with the partner processor that is relevant. After
+  sorting, we will swap with the next process over (`2^0`). After the merging
+  is done there, we will swap with the process that's two processes over (`2^1`)
+  then the process next over (`2^0`). After this, we will repeat with 4 
+  processes over, then 2 over, then 1 over, etc.
+* [source](https://people.cs.rutgers.edu/~venugopa/parallel_summer2012/mpi_bitonic.html)
 ```python
+def bitonic_sort_p(local_arr: list[int], p: int):
+    def compare_high(x: int):
+        MPI_Sendrecv(x) # send my data and receive their data
+        bitonic_merge(data, low, count, 1) # merge up
+        
+    def compare_low(x: int):
+        MPI_Sendrecv(x) # send my data and receive their data
+        bitonic_merge(data, low, count, 0) # merge down
+        
+    size = p
+    rank = MPI_Comm_Rank(MPI_COMM_WORLD, rank)
+    # generate elements
+    # split into p buckets where p is the number of processors
+    # MPI_Scatter to where each process p has n/p elements
+    d = log(p) # dimension
+    # locally sort local data, either with bitonic sort above or quicksort or
+    # whatever
+    sort(local_arr)
+
+    # parallel bitonic sort
+    for i in range(1, d):
+        window-id = most significant (d-i) bits of rank
+        for j in range(i-1, 0):
+            if ((window-id % 2 == 0 and jth bit of pk == 0) or
+                (window-id % 2 == 1 and jth bit of pk == 1)
+            ):
+                compare_low(j)
+            else:
+                compare_high(j)
 ```
 
 ### Radix Sort - Sequential(Naive Allocation)
@@ -357,5 +395,13 @@ endf
 
 ### 2c. Evaluation plan - what and how will you measure and compare
 - Input sizes, Input types
+    - Test sorting algorithms with input size of
+        - 2^10 = 1,024
+        - 2^20 = 1,048,576
+        - 2^30 = 1,073,741,824
+        - 2^40 = 1,099,511,627,776
+    - Test both `long` and `int`
 - Strong scaling (same problem size, increase number of processors/nodes)
 - Weak scaling (increase problem size, increase number of processors)
+- There will be a test on 4, 8, 16, 32, 64 processors for each input size for a
+  total of 20 runs which will cover both strong and weak scaling tests
