@@ -5,7 +5,7 @@
 ## 1. Group members: (Communicate via Discord)
 1. Ivan Zaplatar
 2. Grant Martinez
-3. Third
+3. Hayden O'Keefe
 4. Fourth
 
 ## 2. Project topic: Parallel Sorting Algorithms
@@ -22,7 +22,8 @@
           arr[0] <= arr[1] <= arr[2] <= ... <= arr[i] and 
           arr[i] >= arr[i+1] >= arr[i+2] >= ... >= arr[n-1]
         - The list is then sorted using a merge function
-- Sample Sort:
+- Sample Sort: Hayden O'Keefe
+    - Divide and conquer algorithm that utilizes quick sort. However, unlike quick sort where it choses a pivot to be used to compare with elements of array sample sort has numerous pivots that are determined by the amount of processors that are being utilized. The amount of processors determine how the array will be sectioned off into buckets. Where once the processors has there corresponding buckets it can individually sort there array.
 - Merge Sort: Grant Martinez
     - Divide and conquer algorithm that sorts recursively sorts smaller arrays until it reaches a size of 1. Then using comparisions it merges the arrays back together to produce a sorted array.
 - Radix Sort: Ivan Zaplatar
@@ -248,6 +249,68 @@ def main:
         local = mergesort(local)
         MPI_Send local
     
+```
+
+### Sample Sort - Parallel
+```python
+start
+
+def SampleSort(numOfElements, communicator)
+    define numProcesses
+    define rank_id
+
+    // number of processors
+    MPI_Comm_size(communicator, &numProcesses)
+
+    // rank of processor
+    MPI_Comm_rank(communicator, &rank_id)
+
+    // bucket_size refers to how many elements a processor is required to manage
+    define bucket_size = numOfElements / numProcesses
+
+    // splitters (pivots) for each individual bucket to reference in quicksort
+    define local splitters = size of numProcesses
+    // collect splitters
+    define collect splitters = numProcesses * (local splitters - 1)
+
+    // sort the buckets utilizing quick sort
+    QuickSort(array, first element, last element)
+
+    idx = (numProcesses - 1)
+    for idx < bucket_size
+        numsplitters = numOfElements/numProcesses 
+        divide = idx * numsplitters
+        idx++
+
+    // sort the buckets
+    QuickSort(array, first element, last element)
+
+    // collect all splitters to account for global array
+    MPI_gather(collect splitters, communicator)
+
+    // sort the buckets
+    QuickSort(sorted_array, first element, last element)
+
+    return sorted_array
+
+
+def QuickSort(sorted_array, first element, last element)
+
+    //quick sort local buckets
+    define pivot = array[last element]
+
+    while i < last element
+        if current_index > pivot then
+            pass
+
+        if current_index <= pivot then
+            swap_marker++
+            if current_index > swap_marker then 
+                swap(current_index, swap_marker)
+            else if current_index equals swap_marker then
+                pass
+        i++
+endf
 ```
 
 
