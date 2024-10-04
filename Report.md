@@ -285,18 +285,17 @@ def parallelMergeSort(arr):
     active_procs = total number of processors
 
     # sort local partitions in each process
-    for all processors:
-        mergesort(local)
+    mergesort(local)
 
-    # logP - 1 is number of level in merge tree
+    # P is total number of processors
+    # logP - 1 is number of levels in merge tree
     for j = 0 to logP - 1:
-        for 0 <= i < active_procs:
-            # half of active processors are sending their sorted arrays to be merged other half are recieving and merging
-            if (i < active_procs/2):
-                MPI_Recieve partition to merge from processes i + active_procs/2
-                local = merge(local, recieved_partition)
-            else :
-                MPI_Send local to i - active_procs/2
+        # half of active processors are sending their sorted arrays to be merged other half are recieving and merging
+        if (curr_rank < active_procs/2):
+            MPI_Recieve partition to merge from processes curr_rank + active_procs/2
+            local = merge(local, recieved_partition)
+        else :
+            MPI_Send local to curr_rank - active_procs/2
 
         active_procs /= 2
 ```
