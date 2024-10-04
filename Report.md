@@ -275,20 +275,30 @@ def merge(left, right):
 
 ### Merge Sort - Parallel
 * This uses the sequential functions from above
+* Read first portion of research paper Parallel Merge Sort with Load Balancing (did not include load balancing)
+* [source](https://www.researchgate.net/publication/220091378_Parallel_Merge_Sort_with_Load_Balancing)
 ```python
-def main:
-    arr = input array to be sorted
-    MPI_Scatter to distribute arr across all processes store in local
+def parallelMergeSort(arr):
+    # Send partions of arr to each procces possibly using MPI_Scatter
+    # local partitions are stored in variable called local
 
-    if Master process:
+    active_procs = total number of processors
+
+    # sort local partitions in each process
+    for all processors:
         mergesort(local)
-        for each process:
-            MPI_Recv sorted portion of arr
-            local = merge(local, received portion)
-    else:
-        local = mergesort(local)
-        MPI_Send local
-    
+
+    # logP - 1 is number of level in merge tree
+    for j = 0 to logP - 1:
+        for 0 <= i < active_procs:
+            # half of active processors are sending their sorted arrays to be merged other half are recieving and merging
+            if (i < active_procs/2):
+                MPI_Recieve partition to merge from processes i + active_procs/2
+                local = merge(local, recieved_partition)
+            else :
+                MPI_Send local to i - active_procs/2
+
+        active_procs /= 2
 ```
 
 ### Sample Sort - Sequential
@@ -401,6 +411,11 @@ endf
         - 2^30 = 1,073,741,824
         - 2^40 = 1,099,511,627,776
     - Test both `long` and `int`
+    - Types of input
+        - sorted
+        - reverse sorted
+        - random
+        - 1% swapped
 - Strong scaling (same problem size, increase number of processors/nodes)
 - Weak scaling (increase problem size, increase number of processors)
 - There will be a test on 4, 8, 16, 32, 64 processors for each input size for a
