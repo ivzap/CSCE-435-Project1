@@ -406,10 +406,7 @@ endf
 ### 2c. Evaluation plan - what and how will you measure and compare
 - Input sizes, Input types
     - Test sorting algorithms with input size of
-        - 2^10 = 1,024
-        - 2^20 = 1,048,576
-        - 2^30 = 1,073,741,824
-        - 2^40 = 1,099,511,627,776
+        - 2^16, 2^18, 2^20, 2^22, 2^24, 2^26, 2^28
     - Test both `long` and `int`
     - Types of input
         - sorted
@@ -418,5 +415,4 @@ endf
         - 1% swapped
 - Strong scaling (same problem size, increase number of processors/nodes)
 - Weak scaling (increase problem size, increase number of processors)
-- There will be a test on 4, 8, 16, 32, 64 processors for each input size for a
-  total of 20 runs which will cover both strong and weak scaling tests
+- There will be a test on 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024 processors for each input size 
