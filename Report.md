@@ -415,4 +415,5 @@ endf
         - 1% swapped
 - Strong scaling (same problem size, increase number of processors/nodes)
 - Weak scaling (increase problem size, increase number of processors)
-- There will be a test on 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024 processors for each input size 
+- There will be a test on 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024 processors for each input size
+- Test of performance and evaluation with utilize Caliper and Thicket to visualize the performance of each algorithm and how they compare to one another. This will also determine which algorithms have their strengths/weaknesses in parallel or sequential methods.  
