@@ -11,6 +11,9 @@
 ## 2. Project topic: Parallel Sorting Algorithms
 
 ### 2a. Brief project description (what algorithms will you be comparing and on what architectures)
+Our project is to understand and implement different parallel sorting algorithms using the MPI standard. Additionally, we will gather metrics, such as scalablity, and speedup to determine how effective our parallel algorithm is to its sequential counterpart. We will be running all our experiments on the Grace cluster provided by Texas A&M University. 
+
+Below is a list of the sorting algorithms we will be implementing and a brief description of each...
 
 - Bitonic Sort: Ethan Rutt
     - A comparison based sorting algorithm which sorts by converting a data-set
@@ -32,7 +35,6 @@
 
 
 ### 2b. Pseudocode for each parallel algorithm
-- For MPI programs, include MPI calls you will use to coordinate between processes
 
 ### Bitonic Sort - Sequential
 * Bitonic Sort is an in-place sorting algorithm, so no additional allocations
