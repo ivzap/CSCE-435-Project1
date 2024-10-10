@@ -1,11 +1,34 @@
 #include <mpi.h>
 #include <iostream>
 #include <vector>
+#include <cstdlib>
+#include <ctime>
 
 #define MASTER 0
-#define K 4 // the subset size each processor gets
-#define P 4 // the number of processors 
+#define K 10000 // the subset size each processor gets
+#define P 10 // the number of processes 
 
+bool is_sorted_p(int* arr_chunk, int arr_size, int rank, int p){
+    // verify each local arr_chunk is sorted then the border or p+1 first element
+    for (int i = 0; i < arr_size - 1; i++) {
+        if (arr_chunk[i] > arr_chunk[i + 1]) {
+            return 0;
+        }
+    }
+
+    int last_elements[p];
+    MPI_Gather(&arr_chunk[arr_size - 1], 1, MPI_INT, last_elements, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    if (rank == 0) {
+        // check the last element of each segment to ensure the overall order
+        for (int i = 0; i < p - 1; i++) {
+            if (last_elements[i] > last_elements[i + 1]) {
+                return 0;
+            }
+        }
+        return 1;
+    }
+    return 0;
+}
 
 void counting_sort(int* arr_chunk, int arr_size, int exp, int rank){
     
@@ -100,30 +123,19 @@ int main(int argc, char** argv){
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+    // Seed the random number generator
+    std::srand(static_cast<unsigned int>(std::time(nullptr)));
+
     int arr[P][K] = {0};
-    arr[0][0] = 14;
-    arr[0][1] = 3;
-    arr[0][2] = 14;
-    arr[0][3] = 3;
+    int max_val = 0;
 
-    arr[1][0] = 5;
-    arr[1][1] = 5;
-    arr[1][2] = 7;
-    arr[1][3] = 5;
-
-    arr[2][0] = 14;
-    arr[2][1] = 1;
-    arr[2][2] = 14;
-    arr[2][3] = 1;
-
-    arr[3][0] = 0;
-    arr[3][1] = 0;
-    arr[3][2] = 1;
-    arr[3][3] = 0;
-
-    int max_val = 14;
-
-    int sorted_arr[P*K] = {-99999};
+    // Fill the array with random values between 0 and 20
+    for (int i = 0; i < P; i++) {
+        for (int j = 0; j < K; j++) {
+            arr[i][j] = std::rand() % 200000000; // Random number between 0 and 20
+            max_val = std::max(max_val, arr[i][j]);
+        }
+    }
 
     for (int exp = 1; max_val / exp > 0; exp *= 10) {
         counting_sort(arr[rank], K, exp, rank);
@@ -132,15 +144,14 @@ int main(int argc, char** argv){
     // Wait for all processes before final output
     MPI_Barrier(MPI_COMM_WORLD);
 
-    MPI_Gather(arr[rank], K, MPI_INT, sorted_arr, K, MPI_INT, 0, MPI_COMM_WORLD);
+    bool is_sorted = is_sorted_p(arr[rank], K, rank, P);
 
-    if(rank == MASTER){
-        for(int n: sorted_arr){
-            std::cout << n << " ";
-        }
-        std::cout << std::endl;
+    if(rank == MASTER && !is_sorted){
+        std::cout<<"ERROR: not sorted." << std::endl;
+    } else if(rank == MASTER && is_sorted){
+        std::cout<<"SUCCESS: sorted." << std::endl;
     }
-
+    
     // wait for master to display sorted result
     MPI_Barrier(MPI_COMM_WORLD);
 
