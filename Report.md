@@ -440,3 +440,59 @@ endf
 - Weak scaling (increase problem size, increase number of processors)
 - There will be a test on 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024 processors for each input size
 - Test of performance and evaluation with utilize Caliper and Thicket to visualize the performance of each algorithm and how they compare to one another. This will also determine which algorithms have their strengths/weaknesses in parallel or sequential methods.  
+
+### 3a. Caliper instrumentation
+#### Radix Sort
+```c
+56.101 main
+├─ 0.000 MPI_Init
+├─ 0.033 data_init_runtime
+│  ├─ 0.006 MPI_Reduce
+│  └─ 0.000 MPI_Bcast
+├─ 0.167 comp
+│  ├─ 0.167 comp_large
+│  └─ 0.000 comp_small
+├─ 55.225 comm
+│  ├─ 0.139 comm_small
+│  │  ├─ 0.004 MPI_Gather
+│  │  └─ 0.135 MPI_Bcast
+│  └─ 55.086 comm_large
+│     ├─ 13.466 MPI_Isend
+│     ├─ 13.710 MPI_Irecv
+│     └─ 7.738 MPI_Waitall
+```
+
+### 3b. Collect Metadata
+#### Radix Sort
+```
+profile	2380433062
+cali.caliper.version	2.11.0
+mpi.world.size	10
+spot.metrics	min#inclusive#sum#time.duration,max#inclusive#...
+spot.timeseries.metrics	
+spot.format.version	2
+spot.options	time.variance,profile.mpi,node.order,region.co...
+spot.channels	regionprofile
+cali.channel	spot
+spot:node.order	true
+spot:output	p10-a1000000.cali
+spot:profile.mpi	true
+spot:region.count	true
+spot:time.exclusive	true
+spot:time.variance	true
+launchdate	1728700519
+libraries	[/scratch/group/csce435-f24/Caliper/caliper/li...
+cmdline	[./radix_p, 1000000]
+cluster	c
+algorithm	radix
+programming_model	mpi
+data_type	int
+size_of_data_type	4
+input_size	10000000
+input_type	Random
+num_procs	10
+scalability	strong
+group_num	6
+implementation_source	handwritten
+
+```
