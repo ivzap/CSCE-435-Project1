@@ -462,6 +462,25 @@ endf
 │     └─ 7.738 MPI_Waitall
 ```
 
+### Merge Sort
+```c
+5.565 main
+├─ 0.000 MPI_Init
+├─ 1.546 data_init_runtime
+│  └─ 0.069 MPI_Scatter
+├─ 0.519 comp
+│  └─ 0.519 comp_large
+├─ 0.164 comm
+│  └─ 0.164 comm_large
+│     ├─ 0.075 MPI_Recv
+│     └─ 0.022 MPI_Send
+├─ 0.012 correctness_check
+├─ 0.000 MPI_Finalize
+├─ 0.000 MPI_Initialized
+├─ 0.000 MPI_Finalized
+└─ 1.728 MPI_Comm_dup
+```
+
 ### 3b. Collect Metadata
 #### Radix Sort
 ```
@@ -495,4 +514,22 @@ scalability	strong
 group_num	6
 implementation_source	handwritten
 
+```
+### Merge Sort
+```
+profile	1933867154
+cali.caliper.version	2.11.0
+mpi.world.size	32
+spot.metrics	min#inclusive#sum#time.duration,max#inclusive#...
+spot.timeseries.metrics	
+spot.format.version	2
+spot.options	time.variance,profile.mpi,node.order,region.co...
+spot.channels	regionprofile
+cali.channel	spot
+spot:node.order	true
+spot:output	p32-a67108864-tr.cali
+spot:profile.mpi	true
+spot:region.count	true
+spot:time.exclusive	true
+spot:time.variance	true
 ```
