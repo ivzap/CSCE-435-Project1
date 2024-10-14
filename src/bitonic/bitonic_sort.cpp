@@ -9,6 +9,10 @@
 #include <caliper/cali-manager.h>
 #include <caliper/cali.h>
 
+/******************************************************************************
+ * Start Helper Function Headers
+ ******************************************************************************/
+
 /**
  * get_most_significant_n_bits() gets the most significant n bits starting at
  * the most significant bit thats set of the number num
@@ -53,7 +57,25 @@ void compare(int rank_to_send_to, std::vector<int> arr, int low, int count,
  */
 void bitonic_sort_p(std::vector<int> arr, int total_processes, int rank);
 
+/******************************************************************************
+ * End Helper Function Headers
+ ******************************************************************************/
+
 int main(int argc, char *argv[]) {
+/******************************************************************************
+ * Start Adiak Metadata
+ ******************************************************************************/
+  const char* algorithm = "bitonic sort";
+  const char* programming_model = "mpi";
+  const char* data_type = "int";
+  const char* size_of_data_type = "4";
+  const char* input_size = "4";
+  const char* input_type = "random";
+  const char* num_procs = "4";
+  const char* scalability = "strong";
+  const char* group_number = "6";
+  const char* implementation_source = "handwritten";
+
   adiak::init(NULL);
   adiak::launchdate();                  // launch date of the job
   adiak::libraries();                   // Libraries used
@@ -83,10 +105,21 @@ int main(int argc, char *argv[]) {
                implementation_source); // Where you got the source code of your
                                        // algorithm. choices: ("online", "ai",
                                        // "handwritten").
+/******************************************************************************
+ * End Adiak Metadata
+ ******************************************************************************/
 
+/******************************************************************************
+ * Start MPI Initialization
+ ******************************************************************************/
   int numtasks, taskid, source, dest, mtype;
+
   MPI_Init(&argc, &argv);
 }
+
+/******************************************************************************
+ * Start Helper Function Definitions
+ ******************************************************************************/
 
 int get_most_significant_n_bits(int num, int num_of_bits) {
   if (num == 0) {
@@ -148,3 +181,7 @@ void bitonic_sort_p(std::vector<int> arr, int total_processes, int rank) {
     }
   }
 }
+
+/******************************************************************************
+ * End Helper Function Definitions
+ ******************************************************************************/
