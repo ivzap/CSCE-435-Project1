@@ -464,21 +464,17 @@ endf
 
 #### Merge Sort
 ```c
-5.565 main
+4.081 main
 ├─ 0.000 MPI_Init
-├─ 1.546 data_init_runtime
-│  └─ 0.069 MPI_Scatter
-├─ 0.519 comp
-│  └─ 0.519 comp_large
-├─ 0.164 comm
-│  └─ 0.164 comm_large
-│     ├─ 0.075 MPI_Recv
+├─ 1.537 data_init_runtime
+│  └─ 0.055 MPI_Scatter
+├─ 0.521 comp
+│  └─ 0.521 comp_large
+├─ 0.173 comm
+│  └─ 0.173 comm_large
+│     ├─ 0.093 MPI_Recv
 │     └─ 0.022 MPI_Send
-├─ 0.012 correctness_check
-├─ 0.000 MPI_Finalize
-├─ 0.000 MPI_Initialized
-├─ 0.000 MPI_Finalized
-└─ 1.728 MPI_Comm_dup
+└─ 0.011 correctness_check
 ```
 
 ### 3b. Collect Metadata
@@ -532,4 +528,18 @@ spot:profile.mpi	true
 spot:region.count	true
 spot:time.exclusive	true
 spot:time.variance	true
+launchdate	1728924056
+libraries	[/scratch/group/csce435-f24/Caliper/caliper/li...
+cmdline	[./mergesort, 67108864, r]
+cluster	c
+algorithm	merge
+programming_model	mpi
+data_type	double
+size_of_data_type	8
+input_size	67108864
+input_type	Random
+num_procs	32
+scalability	strong
+group_num	6
+implementation_source	online
 ```
