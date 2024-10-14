@@ -9,7 +9,6 @@
 #include <adiak.hpp>
 #include <caliper/cali-manager.h>
 #include <caliper/cali.h>
-#include <utility>
 
 /**
  * get_most_significant_n_bits() gets the most significant n bits starting at
@@ -60,7 +59,7 @@ int main(int argc, char *argv[]) {
 }
 
 int get_most_significant_n_bits(int num, int num_of_bits) {
-  if (n == 0) {
+  if (num == 0) {
     return 0;
   }
 
@@ -77,7 +76,7 @@ int get_most_significant_n_bits(int num, int num_of_bits) {
   return result;
 }
 
-void bitonic_merge(int *arr, int low, int count, bool direction) {
+void bitonic_merge(int arr[], int low, int count, bool direction) {
   int k;
   if (count <= 1) {
     return;
@@ -87,7 +86,7 @@ void bitonic_merge(int *arr, int low, int count, bool direction) {
 
   for (int i = low; i < low + k; i++) {
     if (direction == (arr[i] > arr[i + k])) {
-      std::swap(&arr[i], &arr[i + k]);
+      std::swap(arr[i], arr[i + k]);
     }
   }
 
