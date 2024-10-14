@@ -462,7 +462,7 @@ endf
 │     └─ 7.738 MPI_Waitall
 ```
 
-### Merge Sort
+#### Merge Sort
 ```c
 5.565 main
 ├─ 0.000 MPI_Init
@@ -515,7 +515,7 @@ group_num	6
 implementation_source	handwritten
 
 ```
-### Merge Sort
+#### Merge Sort
 ```
 profile	1933867154
 cali.caliper.version	2.11.0
