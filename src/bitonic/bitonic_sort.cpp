@@ -1,10 +1,9 @@
 #include "mpi.h"
 #include <algorithm>
 #include <cmath>
-#include <iostream>
 #include <limits.h>
-#include <stdio.h>
 #include <stdlib.h>
+#include <vector>
 
 #include <adiak.hpp>
 #include <caliper/cali-manager.h>
@@ -30,7 +29,7 @@ int get_most_significant_n_bits(int num, int num_of_bits);
  * @param direction the direction to merge (increasing or decreasing). 1 for
  * increasing 0 for decreasing
  */
-void bitonic_merge(int *arr, int low, int count, bool direction);
+void bitonic_merge(std::vector<int> arr, int low, int count, bool direction);
 
 /**
  * compare() is a parallel merging function for bitonic sort
@@ -42,7 +41,8 @@ void bitonic_merge(int *arr, int low, int count, bool direction);
  * @param direction the direction to merge (increasing or decreasing). 1 for
  * increasing 0 for decreasing
  */
-void compare(int rank_to_send_to, int *arr, int low, int count, bool direction);
+void compare(int rank_to_send_to, std::vector<int> arr, int low, int count,
+             bool direction);
 
 /**
  * bitonic_sort_p() is a parallel sorting algorithm that implements bitonic sort
@@ -51,7 +51,7 @@ void compare(int rank_to_send_to, int *arr, int low, int count, bool direction);
  * @param total_processes the total number of processes
  * @param rank this processes rank in the MPI_COMM_WORLD
  */
-void bitonic_sort_p(int *arr, int total_processes, int rank);
+void bitonic_sort_p(std::vector<int> arr, int total_processes, int rank);
 
 int main(int argc, char *argv[]) {
   int numtasks, taskid, source, dest, mtype;
@@ -76,7 +76,7 @@ int get_most_significant_n_bits(int num, int num_of_bits) {
   return result;
 }
 
-void bitonic_merge(int arr[], int low, int count, bool direction) {
+void bitonic_merge(std::vector<int> arr, int low, int count, bool direction) {
   int k;
   if (count <= 1) {
     return;
@@ -94,15 +94,15 @@ void bitonic_merge(int arr[], int low, int count, bool direction) {
   bitonic_merge(arr, low + k, k, direction);
 }
 
-void compare(int rank_to_send_to, int *arr, int low, int count,
+void compare(int rank_to_send_to, std::vector<int> arr, int low, int count,
              bool direction) {
   // MPI_Sendrev(rank_to_send_to, ...);
   bitonic_merge(arr, low, count, direction);
 }
 
-void bitonic_sort_p(int *arr, int total_processes, int rank) {
+void bitonic_sort_p(std::vector<int> arr, int total_processes, int rank) {
   int dimension = static_cast<int>(log2(total_processes));
-  std::sort(arr);
+  std::sort(arr.begin(), arr.end());
 
   for (int i = 1; i < dimension; i++) {
     int num_bits = dimension - i;
@@ -112,8 +112,7 @@ void bitonic_sort_p(int *arr, int total_processes, int rank) {
       if (((window_id % 2 == 0) && (rank >> j == 0)) ||
           (window_id % 2 == 1) && (rank >> j == 1)) {
         compare(j, arr, 0, count, 0);
-      }
-      else {
+      } else {
         compare(j, arr, 0, count, 1);
       }
     }
