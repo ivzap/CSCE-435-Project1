@@ -54,6 +54,36 @@ void compare(int rank_to_send_to, std::vector<int> arr, int low, int count,
 void bitonic_sort_p(std::vector<int> arr, int total_processes, int rank);
 
 int main(int argc, char *argv[]) {
+  adiak::init(NULL);
+  adiak::launchdate();                  // launch date of the job
+  adiak::libraries();                   // Libraries used
+  adiak::cmdline();                     // Command line used to launch the job
+  adiak::clustername();                 // Name of the cluster
+  adiak::value("algorithm", algorithm); // The name of the algorithm you are
+                                        // using (e.g., "merge", "bitonic")
+  adiak::value("programming_model", programming_model); // e.g. "mpi"
+  adiak::value(
+      "data_type",
+      data_type); // The datatype of input elements (e.g., double, int, float)
+  adiak::value("size_of_data_type",
+               size_of_data_type); // sizeof(datatype) of input elements in
+                                   // bytes (e.g., 1, 2, 4)
+  adiak::value("input_size",
+               input_size); // The number of elements in input dataset (1000)
+  adiak::value("input_type",
+               input_type); // For sorting, this would be choices: ("Sorted",
+                            // "ReverseSorted", "Random", "1_perc_perturbed")
+  adiak::value("num_procs", num_procs); // The number of processors (MPI ranks)
+  adiak::value("scalability",
+               scalability); // The scalability of your algorithm. choices:
+                             // ("strong", "weak")
+  adiak::value("group_num",
+               group_number); // The number of your group (integer, e.g., 1, 10)
+  adiak::value("implementation_source",
+               implementation_source); // Where you got the source code of your
+                                       // algorithm. choices: ("online", "ai",
+                                       // "handwritten").
+
   int numtasks, taskid, source, dest, mtype;
   MPI_Init(&argc, &argv);
 }
