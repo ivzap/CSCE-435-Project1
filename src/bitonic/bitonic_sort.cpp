@@ -50,9 +50,13 @@ void bitonic_merge(int arr[], int low, int count, bool direction);
  * compare() is a parallel merging function for bitonic sort
  *
  * @param rank_to_send_to the processes rank to MPI_Sendrecv to
+<<<<<<< HEAD
  * @param rank the processes rank that is calling the function
  * @param arr the array to be sorted
  * @param num_elements number of elements in the array
+=======
+ * @param arr the array to be sorted
+>>>>>>> c3d17e34b3d03427141a0b3cee64d2717945ceaf
  * @param low the low index to start merging from
  * @param count the number of elements to merge
  * @param direction the direction to merge (increasing or decreasing). 1 for
