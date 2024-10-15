@@ -11,7 +11,7 @@
 ## 2. Project topic: Parallel Sorting Algorithms
 
 ### 2a. Brief project description (what algorithms will you be comparing and on what architectures)
-Our project is to understand and implement different parallel sorting algorithms using the MPI standard. Additionally, we will gather metrics, such as scalablity, and speedup to determine how effective our parallel algorithm is to its sequential counterpart. We will be running all our experiments on the Grace cluster provided by Texas A&M University. 
+Our project is to understand and implement different parallel sorting algorithms using the MPI standard. Additionally, we will gather metrics, such as scalablity, and speedup to determine how effective our parallel algorithm is to its sequential counterpart. We will be running all our experiments on the Grace cluster provided by Texas A&M University.
 
 Below is a list of the sorting algorithms we will be implementing and a brief description of each...
 
@@ -21,8 +21,8 @@ Below is a list of the sorting algorithms we will be implementing and a brief de
       sequence.
         - a bitonic sequence is a sequence of numbers that first increases,
           then decreases
-        - formally, there exists an index `i` such that 
-          `arr[0] <= arr[1] <= arr[2] <= ... <= arr[i]` and 
+        - formally, there exists an index `i` such that
+          `arr[0] <= arr[1] <= arr[2] <= ... <= arr[i]` and
           `arr[i] >= arr[i+1] >= arr[i+2] >= ... >= arr[n-1]`
         - The list is then sorted using a merge function
 - Sample Sort: Hayden O'Keefe
@@ -78,19 +78,19 @@ def bitonic_sort(arr: list[int], low, count, direction):
   merging, we want to swap with the partner processor that is relevant. After
   sorting, we will swap with the next process over (`2^0`). After the merging
   is done there, we will swap with the process that's two processes over (`2^1`)
-  then the process next over (`2^0`). After this, we will repeat with 4 
+  then the process next over (`2^0`). After this, we will repeat with 4
   processes over, then 2 over, then 1 over, etc.
-* [source](https://people.cs.rutgers.edu/~venugopa/parallel_summer2012/mpi_bitonic.html)
+* [source](https://cse.buffalo.edu/faculty/miller/Courses/CSE702/Sajid.Khan-Fall-2018.pdf)
 ```python
 def bitonic_sort_p(local_arr: list[int], p: int):
     def compare_high(x: int):
         MPI_Sendrecv(x) # send my data and receive their data
         bitonic_merge(data, low, count, 1) # merge up
-        
+
     def compare_low(x: int):
         MPI_Sendrecv(x) # send my data and receive their data
         bitonic_merge(data, low, count, 0) # merge down
-        
+
     size = p
     rank = MPI_Comm_Rank(MPI_COMM_WORLD, rank)
     # generate elements
@@ -104,7 +104,7 @@ def bitonic_sort_p(local_arr: list[int], p: int):
     # parallel bitonic sort
     for i in range(1, d):
         window-id = most significant (d-i) bits of rank
-        for j in range(i-1, 0):
+        for j in range(i, 0):
             if ((window-id % 2 == 0 and jth bit of pk == 0) or
                 (window-id % 2 == 1 and jth bit of pk == 1)
             ):
@@ -119,28 +119,28 @@ This version of radix, while easier to understand initially, has a problem. Appe
 def sort_arr_on_digit(arr, d):
         // buckets elements based on digits. Buckets[i] are
         // the elements in the ith digit bucket.
-        
+
         buckets = {{}*10}
-        
+
         for i, elm in arr:
             d_digit = (elm / 10**d ) % 10
             buckets[d_digit].append(elm)
-        
+
         output = []
-        
+
         for digit in range(0, 10):
             for elm in bucket[digit]:
                 output.append(elm)
-        
+
         return output
 
 def radix_sort(arr):
     max_digits = get_max_digits(arr)
-    
+
     // lsd to msd
     for d in range(0, max_digits):
         arr = sort_arr_on_digit(arr, d)
-        
+
     return arr
 ```
 
@@ -149,29 +149,29 @@ def radix_sort(arr):
 def sort_arr_on_digit(arr, d):
         // buckets elements based on digits. Buckets[i] are
         // the elements in the ith digit bucket.
-        
+
         buckets = {0}*10
-        
+
         for i, elm in arr:
             d_digit = (elm / 10**d ) % 10
             buckets[d_digit]++
-        
+
         // allows us to determine the offset our buckets
         // will need to be from the start of arr to place elements
         // tells us how much room we have to place the elements with digit 0
         // as an example.
         for i in range(1, arr.size()):
           buckets[i] += buckets[i-1]
-        
+
         output = [0]*arr.size()
-        
+
         // must iterate reverse to maintain the ordering we have found so far
         for i, elm in reverse(arr):
             d_digit = (elm / 10**d ) % 10
             // we use up a spot for this digit in output, do before setting output since 0 indexed
             buckets[d_digit]--
             output[buckets[d_digit]] = elm
-        
+
         for i, elm in output:
             arr[i] = elm
 
@@ -179,11 +179,11 @@ def sort_arr_on_digit(arr, d):
 
 def radix_sort(arr):
     max_digits = get_max_digits(arr)
-    
+
     // lsd to msd
     for d in range(0, max_digits):
         arr = sort_arr_on_digit(arr, d)
-        
+
     return arr
 ```
 
@@ -194,15 +194,15 @@ def sort_arr_on_digit(arr, d):
         output = [0]*arr.size()
         // buckets elements based on digits. Buckets[i] are
         // the elements in the ith digit bucket.
-        
+
         buckets = {0}*10
-        
+
         for i, elm in arr:
             d_digit = (elm / 10**d ) % 10
             buckets[d_digit]++
 
         // MPI_reduce on buckets to sum up all counts
-        
+
         // allows us to determine the offset our buckets
         // will need to be from the start of arr to place elements
         // tells us how much room we have to place the elements with digit 0
@@ -211,8 +211,8 @@ def sort_arr_on_digit(arr, d):
         // MPI master will sequentially develop prefix sum
         for i in range(1, arr.size()):
           buckets[i] += buckets[i-1]
-        
-        
+
+
         // MPI master, workers will place their elements in their output position
         // must iterate reverse to maintain the ordering we have found so far
         for i, elm in reverse(arr):
@@ -229,12 +229,12 @@ def sort_arr_on_digit(arr, d):
 
 def radix_sort(arr):
     max_digits = get_max_digits(arr)
-    
+
     // lsd to msd
     // MPI master to call sort_arr_on_digit
     for d in range(0, max_digits):
         arr = sort_arr_on_digit(arr, d)
-        
+
     return arr
 ```
 
@@ -316,7 +316,7 @@ def SampleSort(numOfElements, numBuckets)
     i = 1
     for 1 < numBuckets
         splitter = numOfElements / numBuckets
-    
+
     QuickSort(sortedArray, first element, last element)
 
     new array = appended sorted buckets
@@ -334,7 +334,7 @@ def QuickSort(sortedaArray, first element, last element)
 
         if current_index <= pivot then
             swap_marker++
-            if current_index > swap_marker then 
+            if current_index > swap_marker then
                 swap(current_index, swap_marker)
             else if current_index equals swap_marker then
                 pass
@@ -370,7 +370,7 @@ def SampleSort(numOfElements, communicator)
 
     idx = (numProcesses - 1)
     for idx < bucket_size
-        numsplitters = numOfElements/numProcesses 
+        numsplitters = numOfElements/numProcesses
         divide = idx * numsplitters
         idx++
 
@@ -415,7 +415,7 @@ def QuickSort(array, first element, last element)
 
         if current_index <= pivot then
             swap_marker++
-            if current_index > swap_marker then 
+            if current_index > swap_marker then
                 swap(current_index, swap_marker)
             else if current_index equals swap_marker then
                 pass
@@ -439,7 +439,7 @@ endf
 - Strong scaling (same problem size, increase number of processors/nodes)
 - Weak scaling (increase problem size, increase number of processors)
 - There will be a test on 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024 processors for each input size
-- Test of performance and evaluation with utilize Caliper and Thicket to visualize the performance of each algorithm and how they compare to one another. This will also determine which algorithms have their strengths/weaknesses in parallel or sequential methods.  
+- Test of performance and evaluation with utilize Caliper and Thicket to visualize the performance of each algorithm and how they compare to one another. This will also determine which algorithms have their strengths/weaknesses in parallel or sequential methods.
 
 ### 3a. Caliper instrumentation
 #### Radix Sort
@@ -484,7 +484,7 @@ profile	2380433062
 cali.caliper.version	2.11.0
 mpi.world.size	10
 spot.metrics	min#inclusive#sum#time.duration,max#inclusive#...
-spot.timeseries.metrics	
+spot.timeseries.metrics
 spot.format.version	2
 spot.options	time.variance,profile.mpi,node.order,region.co...
 spot.channels	regionprofile
@@ -517,7 +517,7 @@ profile	1933867154
 cali.caliper.version	2.11.0
 mpi.world.size	32
 spot.metrics	min#inclusive#sum#time.duration,max#inclusive#...
-spot.timeseries.metrics	
+spot.timeseries.metrics
 spot.format.version	2
 spot.options	time.variance,profile.mpi,node.order,region.co...
 spot.channels	regionprofile
