@@ -6,6 +6,10 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include <caliper/cali.h>
+#include <caliper/cali-manager.h>
+#include <adiak.hpp>
+
 #define MASTER 0
 
 int rank;
@@ -58,9 +62,12 @@ bool is_sorted_p() {
  * numbers below the max are received. A bitonic merge then happens on these
  * numbers so that all of the lower numbers are in this process in ascending
  * order.
+ *
+ * credit to Sajid Khan
+ * https://cse.buffalo.edu/faculty/miller/Courses/CSE702/Sajid.Khan-Fall-2018.pdf
  */
 void compare_low(int j) {
-  int i, min;
+  int min;
 
   int send_counter = 0;
   int *buffer_send = (int *)malloc((elements_per_proc + 1) * sizeof(int));
@@ -72,7 +79,7 @@ void compare_low(int j) {
   MPI_Recv(&min, 1, MPI_INT, rank ^ (1 << j), 0, MPI_COMM_WORLD,
            MPI_STATUS_IGNORE);
 
-  for (i = elements_per_proc - 1; i >= 0; i--) {
+  for (int i = elements_per_proc - 1; i >= 0; i--) {
     if (local[i] > min) {
       send_counter++;
       buffer_send[send_counter] = local[i];
@@ -89,7 +96,7 @@ void compare_low(int j) {
            MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
   int *temp_array = (int *)malloc(elements_per_proc * sizeof(int));
-  for (i = 0; i < elements_per_proc; i++) {
+  for (int i = 0; i < elements_per_proc; i++) {
     temp_array[i] = local[i];
   }
 
@@ -98,7 +105,7 @@ void compare_low(int j) {
   int m = 0;
 
   k = 1;
-  for (i = 0; i < elements_per_proc; i++) {
+  for (int i = 0; i < elements_per_proc; i++) {
     if (temp_array[m] <= buffer_recieve[k]) {
       local[i] = temp_array[m];
       m++;
@@ -124,6 +131,9 @@ void compare_low(int j) {
  * numbers above the min are received. A bitonic merge then happens on these
  * numbers so that all of the higher numbers are in this process in descending
  * order.
+ *
+ * credit to Sajid Khan
+ * https://cse.buffalo.edu/faculty/miller/Courses/CSE702/Sajid.Khan-Fall-2018.pdf
  */
 void compare_high(int j) {
   int max;
@@ -155,8 +165,9 @@ void compare_high(int j) {
   MPI_Send(buffer_send, send_counter + 1, MPI_INT, rank ^ (1 << j), 0,
            MPI_COMM_WORLD);
   int *temp_array = (int *)malloc(elements_per_proc * sizeof(int));
-  for (int i = 0; i < elements_per_proc; i++)
+  for (int i = 0; i < elements_per_proc; i++) {
     temp_array[i] = local[i];
+  }
 
   int k = 1;
   int m = elements_per_proc - 1;
@@ -181,6 +192,10 @@ void compare_high(int j) {
 }
 
 int main(int argc, char *argv[]) {
+  CALI_MARK_BEGIN("main");
+
+  cali::ConfigManager mgr;
+  mgr.start();
   /******************************************************************************
    * MPI_Init
    ******************************************************************************/
@@ -276,6 +291,7 @@ int main(int argc, char *argv[]) {
   /******************************************************************************
    * Data Generation
    ******************************************************************************/
+  CALI_MARK_BEGIN("data_init_runtime");
   elements_per_proc = num_elements / num_procs;
   local = (int *)malloc(elements_per_proc * sizeof(int));
 
@@ -285,16 +301,24 @@ int main(int argc, char *argv[]) {
     local[i] = rand() % 20000;
   }
 
+  CALI_MARK_END("data_init_runtime");
   MPI_Barrier(MPI_COMM_WORLD);
   /******************************************************************************
    * Local Sort
    ******************************************************************************/
+
+  CALI_MARK_BEGIN("comp");
+  CALI_MARK_BEGIN("comp_large");
   std::sort(local, local + elements_per_proc);
+  CALI_MARK_END("comp_large");
+  CALI_MARK_END("comp");
   /******************************************************************************
    * Bitonic Merge with Other Ranks
    ******************************************************************************/
   int dimension = static_cast<int>(std::log2(num_procs));
 
+  CALI_MARK_BEGIN("comm");
+  CALI_MARK_BEGIN("comm_large");
   for (int i = 0; i < dimension; i++) {
     for (int j = i; j >= 0; j--) {
       if (((rank >> (i + 1)) % 2 == 0 && (rank >> j) % 2 == 0) ||
@@ -305,19 +329,14 @@ int main(int argc, char *argv[]) {
       }
     }
   }
+  CALI_MARK_END("comm_large");
+  CALI_MARK_END("comm");
 
   MPI_Barrier(MPI_COMM_WORLD);
   /******************************************************************************
    * Correctness Check
    ******************************************************************************/
-  if (rank == MASTER) {
-    printf("AFTER SORTING\n");
-  }
-  printf("I am rank %d, this is my array: \n", rank);
-  for (int i = 0; i < elements_per_proc; i++) {
-    printf("local[%d]: %d\n", i, local[i]);
-  }
-
+  CALI_MARK_BEGIN("correctness_check");
   bool is_sorted = is_sorted_p();
 
   if (rank == MASTER && !is_sorted) {
@@ -325,10 +344,14 @@ int main(int argc, char *argv[]) {
   } else if (rank == MASTER && is_sorted) {
     printf("SUCCESS: sorted\n");
   }
+  CALI_MARK_END("correctness_check");
   /******************************************************************************
    * Cleanup
    ******************************************************************************/
   free(local);
+  CALI_MARK_END("main");
+  mgr.stop();
+  mgr.flush();
 
   MPI_Finalize();
 
