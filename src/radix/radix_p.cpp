@@ -3,9 +3,10 @@
 #include <vector>
 #include <cstdlib>
 #include <ctime>
-
+#include <caliper/cali.h>  // For basic Caliper instrumentation
+#include <adiak.hpp>
 #define MASTER 0
-#define K 100000 // the subset size each processor gets
+#define K 1000000 // the subset size each processor gets
 #define P 10 // the number of processes 
 
 bool is_sorted_p(int* arr_chunk, int arr_size, int rank, int p){
@@ -33,17 +34,26 @@ bool is_sorted_p(int* arr_chunk, int arr_size, int rank, int p){
 void counting_sort(int* arr_chunk, int arr_size, int exp, int rank){
     
     // count local occurances of each digit for the processor current rank
+    CALI_MARK_BEGIN("comp");
+    CALI_MARK_BEGIN("comp_large");
     int local_cnt[10] = {0};
     for(int i = 0; i < arr_size; i++){
         int digit = (arr_chunk[i] / exp) % 10;
         local_cnt[digit]++;
     }
+    CALI_MARK_END("comp_large");
+    CALI_MARK_END("comp");
 
     // gather the results of all other parts into local_cnt to calculate start
+    CALI_MARK_BEGIN("comm");
+    CALI_MARK_BEGIN("comm_small");
     int gathered_cnt[P][10] = {0};
     MPI_Gather(local_cnt, 10, MPI_INT, gathered_cnt, 10, MPI_INT, 0, MPI_COMM_WORLD);
-
+    CALI_MARK_END("comm_small");
+    CALI_MARK_END("comm");
     // construct the start array and broadcast to all processes
+    CALI_MARK_BEGIN("comp");
+    CALI_MARK_BEGIN("comp_small");
     if(rank == MASTER){
         int base = 0;
         for(int digit = 0; digit < 10; digit++){
@@ -55,16 +65,22 @@ void counting_sort(int* arr_chunk, int arr_size, int exp, int rank){
         }
         
     }
+    CALI_MARK_END("comp_small");
+    CALI_MARK_END("comp");
     
     // once finished, give all processes the gathered_cnt for starts
+    CALI_MARK_BEGIN("comm");
+    CALI_MARK_BEGIN("comm_small");
     MPI_Bcast(gathered_cnt, P * 10, MPI_INT, MASTER, MPI_COMM_WORLD);
-
+    CALI_MARK_END("comm_small");
+    CALI_MARK_END("comm");
     // each process will now construct a "job list" of (process, pos_in_part, value)
     // and send it over the wire to the correct processor
 
     // std::vector<std::vector<int>> send_buffers;
+    CALI_MARK_BEGIN("comp");
+    CALI_MARK_BEGIN("comp_large");
     int send_buffers[arr_size][3] = {0};
-    // std::vector<MPI_Request> send_requests(K);
     int output[arr_size] = {0};
     int send_count = 0;
     for (int i = 0; i < arr_size; i++) {
@@ -83,11 +99,15 @@ void counting_sort(int* arr_chunk, int arr_size, int exp, int rank){
             output[rel_pos] = arr_chunk[i]; // place directly in output
         }
     }
+    CALI_MARK_END("comp_large");
+    CALI_MARK_END("comp");
 
     // wait for all processes to get work
     // MPI_Barrier(MPI_COMM_WORLD);
 
     // signal other processes jobs to perform
+    CALI_MARK_BEGIN("comm");
+    CALI_MARK_BEGIN("comm_large");
     std::vector<MPI_Request> send_requests(send_count);
 
     for (int i = 0; i < send_count; i++) {
@@ -109,8 +129,11 @@ void counting_sort(int* arr_chunk, int arr_size, int exp, int rank){
     // Wait for all receive operations to complete
     MPI_Waitall(send_count, send_requests.data(), MPI_STATUSES_IGNORE);
     MPI_Waitall(send_count, recv_requests.data(), MPI_STATUSES_IGNORE);
-
+    CALI_MARK_END("comm_large");
+    CALI_MARK_END("comm");
     // int output[arr_size] = {0};
+    CALI_MARK_BEGIN("comp");
+    CALI_MARK_BEGIN("comp_large");
     for(int i = 0; i < send_count; i++){
         int pos = recv_buffer[i][1];
         int elm = recv_buffer[i][2];
@@ -123,50 +146,77 @@ void counting_sort(int* arr_chunk, int arr_size, int exp, int rank){
     for(int i = 0; i < arr_size; i++){
         arr_chunk[i] = output[i];
     }
+    CALI_MARK_END("comp_large");
+    CALI_MARK_END("comp");
 
 }
 
 
 int main(int argc, char** argv){
+    CALI_MARK_FUNCTION_BEGIN;
     MPI_Init(&argc, &argv);  // Initialize MPI
+    
+    adiak::init(NULL);
+	adiak::launchdate();    // launch date of the job
+	adiak::libraries();     // Libraries used
+	adiak::cmdline();       // Command line used to launch the job
+	adiak::clustername();   // Name of the cluster
+	adiak::value("algorithm", "radix"); // The name of the algorithm you are using (e.g., "merge", "bitonic")
+	adiak::value("programming_model", "mpi"); // e.g. "mpi"
+	adiak::value("data_type", "int"); // The datatype of input elements (e.g., double, int, float)
+	adiak::value("size_of_data_type", 4); // sizeof(datatype) of input elements in bytes (e.g., 1, 2, 4)
+	adiak::value("input_size", K*P); // The number of elements in input dataset (1000)
+	adiak::value("input_type", "Random"); // For sorting, this would be choices: ("Sorted", "ReverseSorted", "Random", "1_perc_perturbed")
+	adiak::value("num_procs", P); // The number of processors (MPI ranks)
+	adiak::value("scalability", "strong"); // The scalability of your algorithm. choices: ("strong", "weak")
+	adiak::value("group_num", 6); // The number of your group (integer, e.g., 1, 10)
+	adiak::value("implementation_source", "handwritten"); // Where you got the source code of your algorithm. choices: ("online", "ai", "handwritten").
+
+
 
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    // Seed the random number generator
+    if(rank == MASTER)
+        std::cout << "STARTING RADIX SORT... K: "<< K << ", " << P << std::endl; 
+
+    // START OF DATA INIT
+    CALI_MARK_BEGIN("data_init_runtime"); 
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
+    
+    int arr[K] = {0};
+    int local_max = 0;
 
-    int arr[P][K] = {0};
-    int max_val = 0;
-    // Fill the array with random values between 0 and 20
-    for (int i = 0; i < P; i++) {
-        for (int j = 0; j < K; j++) {
-            arr[i][j] = std::rand() % 2000; // Random number between 0 and 20
-            max_val = std::max(max_val, arr[i][j]);
-        }
+    for(int j = 0; j < K; j++){
+        arr[j] = std::rand() % 2000;
+        local_max = std::max(local_max, arr[j]);
     }
 
-    for (int exp = 1; max_val / exp > 0; exp *= 10) {
-        counting_sort(arr[rank], K, exp, rank);
-        std::cout << exp <<std::endl;
+    int global_max = 0;
+
+    MPI_Reduce(&local_max, &global_max, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+
+    MPI_Bcast(&global_max, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    CALI_MARK_END("data_init_runtime");
+    // END OF DATA INIT
+
+
+    // START OF SORT
+    for (int exp = 1; global_max / exp > 0; exp *= 10) {
+        counting_sort(arr, K, exp, rank);
     }
+    // END OF SORT
 
     // Wait for all processes before final output
     MPI_Barrier(MPI_COMM_WORLD);
-
-    bool is_sorted = is_sorted_p(arr[rank], K, rank, P);
+    
+    // START OF CORRECTNESS CHECK
+    CALI_MARK_BEGIN("correctness_check");
+    bool is_sorted = is_sorted_p(arr, K, rank, P);
+    CALI_MARK_END("correctness_check");
+    // END OF CORRECTNESS CHECK
 
     if(rank == MASTER && !is_sorted){
         std::cout<<"ERROR: not sorted." << std::endl;
-    } else if(rank == MASTER && is_sorted){
-        std::cout<<"SUCCESS: sorted." << std::endl;
-    }
-    
-    // wait for master to display sorted result
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    MPI_Finalize();  // Finalize MPI
-
-    return 0;
-}
+  
