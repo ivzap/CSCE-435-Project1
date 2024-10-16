@@ -441,6 +441,11 @@ endf
 - There will be a test on 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024 processors for each input size
 - Test of performance and evaluation with utilize Caliper and Thicket to visualize the performance of each algorithm and how they compare to one another. This will also determine which algorithms have their strengths/weaknesses in parallel or sequential methods.
 
+### 3. Implementation Descriptions
+
+#### Radix Sort
+
+
 ### 3a. Caliper instrumentation
 #### Radix Sort
 ```c
