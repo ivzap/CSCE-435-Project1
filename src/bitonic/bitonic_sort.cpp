@@ -30,7 +30,6 @@ bool is_sorted_p() {
   // verify each local arr_chunk is sorted then the border or p+1 first element
   for (int i = 0; i < elements_per_proc - 1; i++) {
     if (local[i] > local[i + 1]) {
-      printf("not sorted properly locally\n");
       return false;
     }
   }
@@ -43,7 +42,6 @@ bool is_sorted_p() {
     for (int i = 0; i < num_procs - 1; i++) {
       if (last_elements[i] > last_elements[i + 1]) {
         free(last_elements);
-        printf("not sorted properly by last item, item %d and %d\n", i, i + 1);
         return false;
       }
     }
@@ -67,9 +65,11 @@ bool is_sorted_p() {
  * https://cse.buffalo.edu/faculty/miller/Courses/CSE702/Sajid.Khan-Fall-2018.pdf
  */
 void compare_low(int j) {
+  CALI_MARK_BEGIN("comm");
   int min;
 
   int send_counter = 0;
+  CALI_MARK_BEGIN("comm_small");
   int *buffer_send = (int *)malloc((elements_per_proc + 1) * sizeof(int));
   MPI_Send(&local[elements_per_proc - 1], 1, MPI_INT, rank ^ (1 << j), 0,
            MPI_COMM_WORLD);
@@ -78,6 +78,7 @@ void compare_low(int j) {
   int *buffer_recieve = (int *)malloc((elements_per_proc + 1) * sizeof(int));
   MPI_Recv(&min, 1, MPI_INT, rank ^ (1 << j), 0, MPI_COMM_WORLD,
            MPI_STATUS_IGNORE);
+  CALI_MARK_END("comm_small");
 
   for (int i = elements_per_proc - 1; i >= 0; i--) {
     if (local[i] > min) {
@@ -88,13 +89,18 @@ void compare_low(int j) {
     }
   }
 
+  CALI_MARK_BEGIN("comm_large");
   buffer_send[0] = send_counter;
   MPI_Send(buffer_send, send_counter + 1, MPI_INT, rank ^ (1 << j), 0,
            MPI_COMM_WORLD);
 
   MPI_Recv(buffer_recieve, elements_per_proc + 1, MPI_INT, rank ^ (1 << j), 0,
            MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+  CALI_MARK_END("comm_large");
+  CALI_MARK_END("comm");
 
+  CALI_MARK_BEGIN("comp");
+  CALI_MARK_BEGIN("comp_small");
   int *temp_array = (int *)malloc(elements_per_proc * sizeof(int));
   for (int i = 0; i < elements_per_proc; i++) {
     temp_array[i] = local[i];
@@ -114,8 +120,12 @@ void compare_low(int j) {
       k++;
     }
   }
+  CALI_MARK_END("comp_small");
 
+  CALI_MARK_BEGIN("comp_large");
   std::sort(local, local + elements_per_proc);
+  CALI_MARK_END("comp_large");
+  CALI_MARK_END("comp");
 
   free(buffer_send);
   free(buffer_recieve);
@@ -136,16 +146,20 @@ void compare_low(int j) {
  * https://cse.buffalo.edu/faculty/miller/Courses/CSE702/Sajid.Khan-Fall-2018.pdf
  */
 void compare_high(int j) {
+  CALI_MARK_BEGIN("comm");
   int max;
 
   int recv_counter;
   int *buffer_recieve = (int *)malloc((elements_per_proc + 1) * sizeof(int));
+
+  CALI_MARK_BEGIN("comm_small");
   MPI_Recv(&max, 1, MPI_INT, rank ^ (1 << j), 0, MPI_COMM_WORLD,
            MPI_STATUS_IGNORE);
 
   int send_counter = 0;
   int *buffer_send = (int *)malloc((elements_per_proc + 1) * sizeof(int));
   MPI_Send(&local[0], 1, MPI_INT, rank ^ (1 << j), 0, MPI_COMM_WORLD);
+  CALI_MARK_END("comm_small");
 
   for (int i = 0; i < elements_per_proc; i++) {
     if (local[i] < max) {
@@ -156,6 +170,8 @@ void compare_high(int j) {
     }
   }
 
+
+  CALI_MARK_BEGIN("comm_large");
   MPI_Recv(buffer_recieve, elements_per_proc + 1, MPI_INT, rank ^ (1 << j), 0,
            MPI_COMM_WORLD, MPI_STATUS_IGNORE);
   recv_counter = buffer_recieve[0];
@@ -164,7 +180,13 @@ void compare_high(int j) {
 
   MPI_Send(buffer_send, send_counter + 1, MPI_INT, rank ^ (1 << j), 0,
            MPI_COMM_WORLD);
+  CALI_MARK_END("comm_large");
+  CALI_MARK_END("comm");
+
   int *temp_array = (int *)malloc(elements_per_proc * sizeof(int));
+
+  CALI_MARK_BEGIN("comp");
+  CALI_MARK_BEGIN("comp_small");
   for (int i = 0; i < elements_per_proc; i++) {
     temp_array[i] = local[i];
   }
@@ -182,8 +204,12 @@ void compare_high(int j) {
       k++;
     }
   }
+  CALI_MARK_END("comp_small");
 
+  CALI_MARK_BEGIN("comp_large");
   std::sort(local, local + elements_per_proc);
+  CALI_MARK_END("comp_large");
+  CALI_MARK_END("comp");
 
   free(buffer_send);
   free(buffer_recieve);
@@ -232,62 +258,6 @@ int main(int argc, char *argv[]) {
            "of processes {int}.");
     return 1;
   }
-  printf("command line parsed successfully\n");
-  /******************************************************************************
-   * Adiak Metadata
-   ******************************************************************************/
-  // char *adiak_algorithm = "bitonic sort";
-  // char *adiak_programming_model = "mpi";
-  // char *adiak_data_type = "int";
-  // char *adiak_size_of_data_type = "4";
-  // char *adiak_input_type = input_type;
-  // char adiak_input_size[20];
-  // sprintf(adiak_input_size, "%d", num_elements);
-  // char adiak_num_procs[20];
-  // sprintf(adiak_num_procs, "%d", num_procs);
-  // char *adiak_scalability = "strong";
-  // char *adiak_group_number = "6";
-  // char *adiak_implementation_source = "online";
-  //
-  // adiak::init(NULL);
-  // adiak::launchdate();  // launch date of the job
-  // adiak::libraries();   // Libraries used
-  // adiak::cmdline();     // Command line used to launch the job
-  // adiak::clustername(); // Name of the cluster
-  // adiak::value("algorithm",
-  //              adiak_algorithm); // The name of the algorithm you are
-  //                                // using (e.g., "merge", "bitonic")
-  // adiak::value("programming_model", adiak_programming_model); // e.g. "mpi"
-  // adiak::value("data_type",
-  //              adiak_data_type); // The datatype of input elements (e.g.,
-  //                                // double, int, float)
-  // adiak::value("size_of_data_type",
-  //              adiak_size_of_data_type); // sizeof(datatype) of input
-  //              elements
-  //                                        // in bytes (e.g., 1, 2, 4)
-  // adiak::value(
-  //     "input_size",
-  //     adiak_input_size); // The number of elements in input dataset (1000)
-  // adiak::value(
-  //     "input_type",
-  //     adiak_input_type); // For sorting, this would be choices: ("Sorted",
-  //                        // "ReverseSorted", "Random", "1_perc_perturbed")
-  // adiak::value("num_procs",
-  //              adiak_num_procs); // The number of processors (MPI ranks)
-  // adiak::value(
-  //     "scalability",
-  //     adiak_scalability); // The scalability of your algorithm. choices:
-  //                         // ("strong", "weak")
-  // adiak::value(
-  //     "group_num",
-  //     adiak_group_number); // The number of your group (integer, e.g., 1, 10)
-  // adiak::value("implementation_source",
-  //              adiak_implementation_source); // Where you got the source code
-  //              of
-  //                                            // your algorithm. choices:
-  //                                            // ("online", "ai",
-  //                                            "handwritten").
-  // printf("Metadata added successfully\n");
   /******************************************************************************
    * Data Generation
    ******************************************************************************/
@@ -317,8 +287,7 @@ int main(int argc, char *argv[]) {
    ******************************************************************************/
   int dimension = static_cast<int>(std::log2(num_procs));
 
-  CALI_MARK_BEGIN("comm");
-  CALI_MARK_BEGIN("comm_large");
+  // Note that caliper calls are inside compare_low() and compare_high()
   for (int i = 0; i < dimension; i++) {
     for (int j = i; j >= 0; j--) {
       if (((rank >> (i + 1)) % 2 == 0 && (rank >> j) % 2 == 0) ||
@@ -329,8 +298,6 @@ int main(int argc, char *argv[]) {
       }
     }
   }
-  CALI_MARK_END("comm_large");
-  CALI_MARK_END("comm");
 
   MPI_Barrier(MPI_COMM_WORLD);
   /******************************************************************************
@@ -350,6 +317,45 @@ int main(int argc, char *argv[]) {
    ******************************************************************************/
   free(local);
   CALI_MARK_END("main");
+
+  /******************************************************************************
+   * Adiak Metadata
+   ******************************************************************************/
+  std::string adiak_input_type = std::string(input_type);
+
+  adiak::init(NULL);
+  adiak::launchdate();  // launch date of the job
+  adiak::libraries();   // Libraries used
+  adiak::cmdline();     // Command line used to launch the job
+  adiak::clustername(); // Name of the cluster
+  adiak::value("algorithm",
+               "bitonic"); // The name of the algorithm you are
+                                 // using (e.g., "merge", "bitonic")
+  adiak::value("programming_model", "mpi"); // e.g. "mpi"
+  adiak::value("data_type",
+               "int"); // The datatype of input elements (e.g.,
+                                 // double, int, float)
+  adiak::value("size_of_data_type",
+               "4"); // sizeof(datatype) of input
+  adiak::value(
+      "input_size",
+      num_elements); // The number of elements in input dataset (1000)
+  adiak::value(
+      "input_type",
+      adiak_input_type); // For sorting, this would be choices: ("Sorted",
+                         // "ReverseSorted", "Random", "1_perc_perturbed")
+  adiak::value("num_procs",
+               num_procs); // The number of processors (MPI ranks)
+  adiak::value(
+      "scalability",
+      "strong"); // The scalability of your algorithm. choices:
+                          // ("strong", "weak")
+  adiak::value(
+      "group_num",
+      "6"); // The number of your group (integer, e.g., 1, 10)
+  adiak::value("implementation_source",
+               "online"); // Where you got the source code
+
   mgr.stop();
   mgr.flush();
 
