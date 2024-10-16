@@ -441,6 +441,13 @@ endf
 - There will be a test on 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024 processors for each input size
 - Test of performance and evaluation with utilize Caliper and Thicket to visualize the performance of each algorithm and how they compare to one another. This will also determine which algorithms have their strengths/weaknesses in parallel or sequential methods.
 
+### 3. Implementation Descriptions
+
+#### Radix Sort
+
+#### Merge Sort
+The parallel merge sort algorithm was implmented by having each process sort individual sections of an array then combining them into one sorted array in the final process. The combination of each process is done by combining the local arrays of process i with process i + active_procs / 2. This creates a logarithmic pattern of combination. The number of of active processes starts as n which is the total number of processes avaible, but it is divided in half after each level of combination. As the local arrays combine and become larger, the number of processes that are involved in communication shrinks. By the end, all local arrays have combined into one process. Because the entire array must fit into the memory of one processor in the end, both data initialization and correctness checking are done in one processor. 
+
 ### 3a. Caliper instrumentation
 #### Radix Sort
 ```c
@@ -464,17 +471,17 @@ endf
 
 #### Merge Sort
 ```c
-4.081 main
+3.822 main
 ├─ 0.000 MPI_Init
-├─ 1.537 data_init_runtime
-│  └─ 0.055 MPI_Scatter
-├─ 0.521 comp
-│  └─ 0.521 comp_large
-├─ 0.173 comm
-│  └─ 0.173 comm_large
-│     ├─ 0.093 MPI_Recv
-│     └─ 0.022 MPI_Send
-└─ 0.011 correctness_check
+├─ 1.547 data_init_runtime
+│  └─ 0.071 MPI_Scatter
+├─ 0.520 comp
+│  └─ 0.520 comp_large
+├─ 0.161 comm
+│  └─ 0.161 comm_large
+│     ├─ 0.068 MPI_Recv
+│     └─ 0.023 MPI_Send
+└─ 0.176 correctness_check
 ```
 
 #### Bitonic Sort
