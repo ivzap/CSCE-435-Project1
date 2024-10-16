@@ -446,7 +446,28 @@ endf
 #### Radix Sort
 
 #### Merge Sort
-The parallel merge sort algorithm was implmented by having each process sort individual sections of an array then combining them into one sorted array in the final process. The combination of each process is done by combining the local arrays of process i with process i + active_procs / 2. This creates a logarithmic pattern of combination. The number of of active processes starts as n which is the total number of processes avaible, but it is divided in half after each level of combination. As the local arrays combine and become larger, the number of processes that are involved in communication shrinks. By the end, all local arrays have combined into one process. Because the entire array must fit into the memory of one processor in the end, both data initialization and correctness checking are done in one processor. 
+The parallel merge sort algorithm was implmented by having each process sort individual sections of an array then combining them into one sorted array in the final process. The combination of each process is done by combining the local arrays of process i with process i + active_procs / 2. This creates a logarithmic pattern of combination. The number of of active processes starts as n which is the total number of processes avaible, but it is divided in half after each level of combination. As the local arrays combine and become larger, the number of processes that are involved in communication shrinks. By the end, all local arrays have combined into one process. Because the entire array must fit into the memory of one processor in the end, both data initialization and correctness checking are done in one processor.
+
+#### Bitonic Sort
+* The parallel bitonic sort algorithm was implemented by having each process
+  sort their own local array, turning it into a bitonic sequence (since an
+  ascending array is a bitonic sequence with the decreasing part empty), then
+  consists of bitonic merging with other processes until the list is sorted.
+  This works by the `compare_low()` and `compare_high()` functions. Each
+  process has a partner, namely, it's power of 2 partner, so if we have process
+  00, their partners will be 10, 100, 1000, depending on how many processes
+  there are. These processes will bitonic merge in ascending order. The other
+  processes have their partners similarly (process i has partner i ^ j) and
+  will order their arrays in descending order. At each step, we are moving the
+  lower elements to the ascending side and the bigger elements to the
+  descending side so that all elements on the left are smaller than elements on
+  the right regardless of order (ascending/descending). On the final iteration,
+  all of the processes merge together to form a bitonic sequence with the
+  decreasing part empty, i.e. a sorted array.
+
+[](images/bitonic_sort_image.png)
+
+* [source](https://cse.buffalo.edu/faculty/miller/Courses/CSE702/Sajid.Khan-Fall-2018.pdf)
 
 ### 3a. Caliper instrumentation
 #### Radix Sort
