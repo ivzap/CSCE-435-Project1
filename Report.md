@@ -465,7 +465,7 @@ The parallel merge sort algorithm was implmented by having each process sort ind
   all of the processes merge together to form a bitonic sequence with the
   decreasing part empty, i.e. a sorted array.
 
-![bitonic sort communication visualization](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic_sort_image.png))
+![bitonic sort communication visualization](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic_sort_image.png)
 
 * [source](https://cse.buffalo.edu/faculty/miller/Courses/CSE702/Sajid.Khan-Fall-2018.pdf)
 
