@@ -477,6 +477,30 @@ endf
 └─ 0.011 correctness_check
 ```
 
+#### Bitonic Sort
+```c
+2.929 main
+├─ 0.000 MPI_Init
+├─ 0.012 data_init_runtime
+├─ 0.529 MPI_Barrier
+├─ 0.903 comp
+│  ├─ 0.841 comp_large
+│  └─ 0.062 comp_small
+├─ 0.055 comm
+│  ├─ 0.022 comm_small
+│  │  ├─ 0.000 MPI_Send
+│  │  └─ 0.021 MPI_Recv
+│  └─ 0.014 comm_large
+│     ├─ 0.005 MPI_Send
+│     └─ 0.009 MPI_Recv
+└─ 0.003 correctness_check
+   └─ 0.002 MPI_Gather
+0.000 MPI_Finalize
+0.000 MPI_Initialized
+0.000 MPI_Finalized
+0.005 MPI_Comm_dup
+```
+
 ### 3b. Collect Metadata
 #### Radix Sort
 ```
@@ -538,6 +562,39 @@ data_type	double
 size_of_data_type	8
 input_size	67108864
 input_type	Random
+num_procs	32
+scalability	strong
+group_num	6
+implementation_source	online
+```
+
+#### Bitonic Sort
+```
+profile	3944471742
+cali.caliper.version	2.11.0
+mpi.world.size	32
+spot.metrics	min#inclusive#sum#time.duration,max#inclusive#...
+spot.timeseries.metrics
+spot.format.version	2
+spot.options	time.variance,profile.mpi,node.order,region.co...
+spot.channels	regionprofile
+cali.channel	spot
+spot:node.order	true
+spot:output	p32-a16777216.cali
+spot:profile.mpi	true
+spot:region.count	true
+spot:time.exclusive	true
+spot:time.variance	true
+launchdate	1729093173
+libraries	[/scratch/group/csce435-f24/Caliper/caliper/li...
+cmdline	[./bitonic_sort, -t, random, -n, 16777216, -p,...
+cluster	c
+algorithm	bitonic
+programming_model	mpi
+data_type	int
+size_of_data_type	4
+input_size	16777216
+input_type	random
 num_procs	32
 scalability	strong
 group_num	6
