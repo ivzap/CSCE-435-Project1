@@ -1,0 +1,123 @@
+#include <iostream>
+#include <cstdlib>
+#include <ctime>
+
+#define QUICKSORT_THRESHOLD 500
+#define LENGTH_PER_SAMPLE 100
+
+void swap(int *a, int *b) {
+  int tmp = *a;
+  *a = *b;
+  *b = tmp;
+}
+
+void quick_sort(int arr[], unsigned long length){
+
+    if(length <= 1){
+        return;
+    }
+
+    int random_idx = rand() % length;
+    int pivot = arr[random_idx];
+
+    swap(&arr[random_idx], &arr[length - 1]);
+
+    int idx = 0;
+    int swap_marker = 0;
+
+
+    std::cout << "length: " << length << std::endl;
+
+    while(idx < length - 1){
+        std::cout << "idx: " << idx << std::endl;
+        if(arr[idx] > pivot){
+            std::cout << "\tarr[idx] > pivot" << std::endl;
+            idx++;
+            continue;
+        }
+
+        std::cout << "\tarr[idx] <= pivot" << std::endl;
+
+        swap_marker++;
+        std::cout << "swap_marker: " << swap_marker << std::endl;
+
+        if (swap_marker == length - 1) break;
+        if(arr[idx] < arr[swap_marker]){
+            std::cout << "\tarr[idx] > arr[swap_marker], swapped" << std::endl;
+            swap(&arr[idx], &arr[swap_marker]);
+        }
+        else if(arr[idx] == arr[swap_marker]){
+            std::cout << "\tarr[idx] == arr[swap_marker], cotinued." << std::endl;
+            idx++;
+        }
+    }
+
+    quick_sort(arr, swap_marker);
+
+    if(length <= swap_marker + 1){
+        return;
+    }
+
+    quick_sort(&arr[swap_marker + 1], length - swap_marker - 1);
+}
+
+void sampleSort(int arr[], unsigned long length) {
+  if (length < QUICKSORT_THRESHOLD) {
+    quick_sort(arr, length);
+    return;  
+  }
+
+  unsigned long num_samples = length / LENGTH_PER_SAMPLE;
+
+  int *samples = (int *) malloc(sizeof(int) * num_samples);
+  
+  for (unsigned long i = 0; i < num_samples; i++ ) {
+    int sample;
+    bool another_sample;
+
+    do {
+      another_sample = false;
+      sample = arr[rand() % length];
+      
+      for (unsigned long j = 0; j < i; j ++) {
+        if (arr[j] == sample) {
+          another_sample = true;
+          break;  
+        }
+      }
+    } while (another_sample);
+  }
+
+  quick_sort(samples, num_samples);
+}
+
+
+int main(){
+    unsigned long length = 50;
+
+    srand(time(0));
+
+    int *arr = (int *)malloc(length * sizeof(int));
+
+    for (int i = 0; i < length; i++) {
+        arr[i] = rand() % 100;
+    }
+
+    std::cout << "Original: ";
+    for(int i = 0; i < length; i++){
+        std::cout << arr[i] << " ";
+    }
+    std::cout << std::endl;
+
+    quick_sort(arr, length);
+
+    // std::cout << "Outcome: ";
+    // for(int i = 0; i < length; i++){
+    //     std::cout << arr[i] << " ";
+    // }
+    // std::cout << std::endl;
+    
+    free(arr);
+
+    return 0;
+}
