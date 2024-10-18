@@ -1,14 +1,16 @@
 #include "mpi.h"
 #include <algorithm>
+#include <climits>
 #include <getopt.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string>
 #include <time.h>
 
-#include <caliper/cali.h>
-#include <caliper/cali-manager.h>
 #include <adiak.hpp>
+#include <caliper/cali-manager.h>
+#include <caliper/cali.h>
 
 #define MASTER 0
 
@@ -17,6 +19,108 @@ int num_procs = -1;
 int num_elements = -1;
 int elements_per_proc;
 int *local;
+
+/**
+ * generates `elements_per_proc` random elements into `local` array
+ * Since those are both global variables, no arguments are needed
+ * values are written into local, so nothing is returned
+ */
+void generate_random() {
+  for (int i = 0; i < elements_per_proc; i++) {
+    local[i] = rand() % INT_MAX;
+  }
+}
+
+/**
+ * generates `elements_per_proc` sorted elements into `local` array
+ * Since those are both global variables, no arguments are needed
+ * values are written into local, so nothing is returned
+ */
+void generate_sorted() {
+  int range = rank * elements_per_proc;
+  for (int i = 0; i < elements_per_proc; i++) {
+    local[i] = range++;
+  }
+}
+
+/**
+ * generates `elements_per_proc` reverse sorted elements into `local` array
+ * Since those are both global variables, no arguments are needed
+ * values are written into local, so nothing is returned
+ */
+void generate_reversed() {
+  int range = num_elements - (rank * elements_per_proc) - 1;
+  for (int i = 0; i < elements_per_proc; i++) {
+    local[i] = range--;
+  }
+}
+
+/**
+ * Need an always positive modulo for rank in generate_perturbed()
+ *
+ * credit to
+ * https://stackoverflow.com/questions/14997165/fastest-way-to-get-a-positive-modulo-in-c-c
+ */
+int positive_modulo(int i, int n) { return (i % n + n) % n; }
+
+/**
+ * generates `elements_per_proc` sorted elements into `local` array
+ * after these are generated, we will swap 1% of the elements
+ *
+ * we also must swap across processes
+ * 1/4 of the 1% will be swapped locally
+ * the other 3/4 will be swapped with other processes
+ *
+ * processes will generate the sorted values according to their rank
+ * i.e. rank 0 will generate 0 through k, rank 1 will generate k + 1 through j,
+ * rank 2 will generate j+1 through l, etc.
+ *
+ * Since those are both global variables, no arguments are needed
+ * values are written into local, so nothing is returned
+ */
+void generate_perturbed() {
+  int range = rank * elements_per_proc;
+  for (int i = 0; i < elements_per_proc; i++) {
+    local[i] = range++;
+  }
+
+  int one_percent = num_elements / 100;
+  int num_local_swaps = one_percent / 4;
+  int num_nonlocal_swaps = (one_percent * 3) / 4;
+
+  for (int i = 0; i < num_local_swaps; i++) {
+    std::swap(local[rand() % elements_per_proc],
+              local[rand() % elements_per_proc]);
+  }
+
+  int curr;
+  int other;
+  int other_rank;
+  int gap = 1;
+
+  for (int i = 0; i < num_nonlocal_swaps; i++) {
+    int index = rand() % elements_per_proc;
+    curr = local[index];
+
+    // even ranks will swap with their odd partner. I did it this way so it
+    // doesn't hang if there's not a lot of swaps to happen, this way every swap
+    // has a known partner
+    if (rank % 2 == 0) {
+      other_rank = positive_modulo((rank + gap), num_procs);
+      MPI_Send(&curr, 1, MPI_INT, other_rank, 0, MPI_COMM_WORLD);
+      MPI_Recv(&other, 1, MPI_INT, other_rank, 0, MPI_COMM_WORLD,
+               MPI_STATUS_IGNORE);
+    } else {
+      other_rank = positive_modulo((rank - gap), num_procs);
+      MPI_Send(&curr, 1, MPI_INT, other_rank, 0, MPI_COMM_WORLD);
+      MPI_Recv(&other, 1, MPI_INT, other_rank, 0, MPI_COMM_WORLD,
+               MPI_STATUS_IGNORE);
+    }
+    gap += 2;
+
+    local[index] = other;
+  }
+}
 
 /**
  * checks if the arrays are sorted using MPI
@@ -170,7 +274,6 @@ void compare_high(int j) {
     }
   }
 
-
   CALI_MARK_BEGIN("comm_large");
   MPI_Recv(buffer_recieve, elements_per_proc + 1, MPI_INT, rank ^ (1 << j), 0,
            MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -231,13 +334,13 @@ int main(int argc, char *argv[]) {
   /******************************************************************************
    * Command Line Option Parsing
    ******************************************************************************/
-  char *input_type = nullptr;
+  char *input_type_raw = nullptr;
   int opt;
 
   while ((opt = getopt(argc, argv, "t:n:p:")) != -1) {
     switch (opt) {
     case 't':
-      input_type = optarg;
+      input_type_raw = optarg;
       break;
     case 'n':
       num_elements = atoi(optarg);
@@ -251,32 +354,50 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (input_type == nullptr || num_elements == -1 || num_procs == -1) {
-    printf("Command line arguments are needed for this program to function. "
-           "Please indicate the input type: {random, sorted, "
-           "reverse, perturbed}, the number of elements: {int}, and the number "
-           "of processes {int}.");
+  if (input_type_raw == nullptr || num_elements == -1 || num_procs == -1) {
+    printf(
+        "Command line arguments are needed for this program to function. "
+        "Please indicate the input type: {random, sorted, "
+        "reversed, perturbed}, the number of elements: {int}, and the number "
+        "of processes {int}.\n");
     return 1;
   }
+
+  std::string input_type = std::string(input_type_raw);
   /******************************************************************************
    * Data Generation
    ******************************************************************************/
+  std::unordered_map<std::string, void (*)()> input_type_map = {
+      {"random", generate_random},
+      {"sorted", generate_sorted},
+      {"reversed", generate_reversed},
+      {"perturbed", generate_perturbed}};
+
   CALI_MARK_BEGIN("data_init_runtime");
+
+  std::srand(time(NULL) + rank);
   elements_per_proc = num_elements / num_procs;
   local = (int *)malloc(elements_per_proc * sizeof(int));
 
-  std::srand(time(NULL) + rank);
-
-  for (int i = 0; i < elements_per_proc; i++) {
-    local[i] = rand() % 20000;
+  auto it = input_type_map.find(input_type);
+  if (it == input_type_map.end()) {
+    printf(
+        "Please put an input type of the form {random, sorted, reversed, "
+        "perturbed}. If you don't the program will crash, just like this!\n");
+    return 1;
   }
+  it->second();
 
   CALI_MARK_END("data_init_runtime");
   MPI_Barrier(MPI_COMM_WORLD);
+
+  printf("This is rank %d\n", rank);
+  for (int i = 0; i < elements_per_proc; i++) {
+    printf("local[%d]: %d\n", i, local[i]);
+  }
   /******************************************************************************
    * Local Sort
    ******************************************************************************/
-
   CALI_MARK_BEGIN("comp");
   CALI_MARK_BEGIN("comp_large");
   std::sort(local, local + elements_per_proc);
@@ -321,38 +442,35 @@ int main(int argc, char *argv[]) {
   /******************************************************************************
    * Adiak Metadata
    ******************************************************************************/
-  std::string adiak_input_type = std::string(input_type);
-
   adiak::init(NULL);
   adiak::launchdate();  // launch date of the job
   adiak::libraries();   // Libraries used
   adiak::cmdline();     // Command line used to launch the job
   adiak::clustername(); // Name of the cluster
   adiak::value("algorithm",
-               "bitonic"); // The name of the algorithm you are
-                                 // using (e.g., "merge", "bitonic")
+               "bitonic");                  // The name of the algorithm you
+               are
+                                            // using (e.g., "merge",
+                                            "bitonic")
   adiak::value("programming_model", "mpi"); // e.g. "mpi"
   adiak::value("data_type",
                "int"); // The datatype of input elements (e.g.,
-                                 // double, int, float)
+                       // double, int, float)
   adiak::value("size_of_data_type",
                "4"); // sizeof(datatype) of input
-  adiak::value(
-      "input_size",
-      num_elements); // The number of elements in input dataset (1000)
-  adiak::value(
-      "input_type",
-      adiak_input_type); // For sorting, this would be choices: ("Sorted",
-                         // "ReverseSorted", "Random", "1_perc_perturbed")
+  adiak::value("input_size",
+               num_elements); // The number of elements in input dataset
+               (1000)
+  adiak::value("input_type",
+               input_type); // For sorting, this would be choices: ("Sorted",
+                            // "ReverseSorted", "Random", "1_perc_perturbed")
   adiak::value("num_procs",
                num_procs); // The number of processors (MPI ranks)
-  adiak::value(
-      "scalability",
-      "strong"); // The scalability of your algorithm. choices:
+  adiak::value("scalability",
+               "strong"); // The scalability of your algorithm. choices:
                           // ("strong", "weak")
-  adiak::value(
-      "group_num",
-      "6"); // The number of your group (integer, e.g., 1, 10)
+  adiak::value("group_num",
+               "6"); // The number of your group (integer, e.g., 1, 10)
   adiak::value("implementation_source",
                "online"); // Where you got the source code
 
