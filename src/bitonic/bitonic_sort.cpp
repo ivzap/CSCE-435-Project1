@@ -8,10 +8,9 @@
 #include <string>
 #include <time.h>
 
-// #include <adiak.hpp>
-// #include <caliper/cali-manager.h>
-// #include <caliper/cali.h>
-#include <unordered_map>
+#include <adiak.hpp>
+#include <caliper/cali-manager.h>
+#include <caliper/cali.h>
 
 #define MASTER 0
 
@@ -57,6 +56,14 @@ void generate_reversed() {
 }
 
 /**
+ * Need an always positive modulo for rank in generate_perturbed()
+ *
+ * credit to
+ * https://stackoverflow.com/questions/14997165/fastest-way-to-get-a-positive-modulo-in-c-c
+ */
+int positive_modulo(int i, int n) { return (i % n + n) % n; }
+
+/**
  * generates `elements_per_proc` sorted elements into `local` array
  * after these are generated, we will swap 1% of the elements
  *
@@ -88,22 +95,31 @@ void generate_perturbed() {
 
   int curr;
   int other;
+  int other_rank;
+  int gap = 1;
 
-  if (rank == 0) {
-    printf("swapping nonlocally\n");
-  }
   for (int i = 0; i < num_nonlocal_swaps; i++) {
     int index = rand() % elements_per_proc;
-    int other_rank = (rank + 1 + i) % num_procs;
     curr = local[index];
 
-    MPI_Send(&curr, 1, MPI_INT, other_rank, 0, MPI_COMM_WORLD);
-    MPI_Recv(&other, 1, MPI_INT, other_rank, 0, MPI_COMM_WORLD,
-             MPI_STATUS_IGNORE);
+    // even ranks will swap with their odd partner. I did it this way so it
+    // doesn't hang if there's not a lot of swaps to happen, this way every swap
+    // has a known partner
+    if (rank % 2 == 0) {
+      other_rank = positive_modulo((rank + gap), num_procs);
+      MPI_Send(&curr, 1, MPI_INT, other_rank, 0, MPI_COMM_WORLD);
+      MPI_Recv(&other, 1, MPI_INT, other_rank, 0, MPI_COMM_WORLD,
+               MPI_STATUS_IGNORE);
+    } else {
+      other_rank = positive_modulo((rank - gap), num_procs);
+      MPI_Send(&curr, 1, MPI_INT, other_rank, 0, MPI_COMM_WORLD);
+      MPI_Recv(&other, 1, MPI_INT, other_rank, 0, MPI_COMM_WORLD,
+               MPI_STATUS_IGNORE);
+    }
+    gap += 2;
 
     local[index] = other;
   }
-  printf("finished swapping\n");
 }
 
 /**
@@ -153,11 +169,11 @@ bool is_sorted_p() {
  * https://cse.buffalo.edu/faculty/miller/Courses/CSE702/Sajid.Khan-Fall-2018.pdf
  */
 void compare_low(int j) {
-  // CALI_MARK_BEGIN("comm");
+  CALI_MARK_BEGIN("comm");
   int min;
 
   int send_counter = 0;
-  // CALI_MARK_BEGIN("comm_small");
+  CALI_MARK_BEGIN("comm_small");
   int *buffer_send = (int *)malloc((elements_per_proc + 1) * sizeof(int));
   MPI_Send(&local[elements_per_proc - 1], 1, MPI_INT, rank ^ (1 << j), 0,
            MPI_COMM_WORLD);
@@ -166,7 +182,7 @@ void compare_low(int j) {
   int *buffer_recieve = (int *)malloc((elements_per_proc + 1) * sizeof(int));
   MPI_Recv(&min, 1, MPI_INT, rank ^ (1 << j), 0, MPI_COMM_WORLD,
            MPI_STATUS_IGNORE);
-  // CALI_MARK_END("comm_small");
+  CALI_MARK_END("comm_small");
 
   for (int i = elements_per_proc - 1; i >= 0; i--) {
     if (local[i] > min) {
@@ -177,18 +193,18 @@ void compare_low(int j) {
     }
   }
 
-  // CALI_MARK_BEGIN("comm_large");
+  CALI_MARK_BEGIN("comm_large");
   buffer_send[0] = send_counter;
   MPI_Send(buffer_send, send_counter + 1, MPI_INT, rank ^ (1 << j), 0,
            MPI_COMM_WORLD);
 
   MPI_Recv(buffer_recieve, elements_per_proc + 1, MPI_INT, rank ^ (1 << j), 0,
            MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-  // CALI_MARK_END("comm_large");
-  // CALI_MARK_END("comm");
+  CALI_MARK_END("comm_large");
+  CALI_MARK_END("comm");
 
-  // CALI_MARK_BEGIN("comp");
-  // CALI_MARK_BEGIN("comp_small");
+  CALI_MARK_BEGIN("comp");
+  CALI_MARK_BEGIN("comp_small");
   int *temp_array = (int *)malloc(elements_per_proc * sizeof(int));
   for (int i = 0; i < elements_per_proc; i++) {
     temp_array[i] = local[i];
@@ -208,12 +224,12 @@ void compare_low(int j) {
       k++;
     }
   }
-  // CALI_MARK_END("comp_small");
+  CALI_MARK_END("comp_small");
 
-  // CALI_MARK_BEGIN("comp_large");
+  CALI_MARK_BEGIN("comp_large");
   std::sort(local, local + elements_per_proc);
-  // CALI_MARK_END("comp_large");
-  // CALI_MARK_END("comp");
+  CALI_MARK_END("comp_large");
+  CALI_MARK_END("comp");
 
   free(buffer_send);
   free(buffer_recieve);
@@ -234,20 +250,20 @@ void compare_low(int j) {
  * https://cse.buffalo.edu/faculty/miller/Courses/CSE702/Sajid.Khan-Fall-2018.pdf
  */
 void compare_high(int j) {
-  // CALI_MARK_BEGIN("comm");
+  CALI_MARK_BEGIN("comm");
   int max;
 
   int recv_counter;
   int *buffer_recieve = (int *)malloc((elements_per_proc + 1) * sizeof(int));
 
-  // CALI_MARK_BEGIN("comm_small");
+  CALI_MARK_BEGIN("comm_small");
   MPI_Recv(&max, 1, MPI_INT, rank ^ (1 << j), 0, MPI_COMM_WORLD,
            MPI_STATUS_IGNORE);
 
   int send_counter = 0;
   int *buffer_send = (int *)malloc((elements_per_proc + 1) * sizeof(int));
   MPI_Send(&local[0], 1, MPI_INT, rank ^ (1 << j), 0, MPI_COMM_WORLD);
-  // CALI_MARK_END("comm_small");
+  CALI_MARK_END("comm_small");
 
   for (int i = 0; i < elements_per_proc; i++) {
     if (local[i] < max) {
@@ -258,7 +274,7 @@ void compare_high(int j) {
     }
   }
 
-  // CALI_MARK_BEGIN("comm_large");
+  CALI_MARK_BEGIN("comm_large");
   MPI_Recv(buffer_recieve, elements_per_proc + 1, MPI_INT, rank ^ (1 << j), 0,
            MPI_COMM_WORLD, MPI_STATUS_IGNORE);
   recv_counter = buffer_recieve[0];
@@ -267,13 +283,13 @@ void compare_high(int j) {
 
   MPI_Send(buffer_send, send_counter + 1, MPI_INT, rank ^ (1 << j), 0,
            MPI_COMM_WORLD);
-  // CALI_MARK_END("comm_large");
-  // CALI_MARK_END("comm");
+  CALI_MARK_END("comm_large");
+  CALI_MARK_END("comm");
 
   int *temp_array = (int *)malloc(elements_per_proc * sizeof(int));
 
-  // CALI_MARK_BEGIN("comp");
-  // CALI_MARK_BEGIN("comp_small");
+  CALI_MARK_BEGIN("comp");
+  CALI_MARK_BEGIN("comp_small");
   for (int i = 0; i < elements_per_proc; i++) {
     temp_array[i] = local[i];
   }
@@ -291,12 +307,12 @@ void compare_high(int j) {
       k++;
     }
   }
-  // CALI_MARK_END("comp_small");
+  CALI_MARK_END("comp_small");
 
-  // CALI_MARK_BEGIN("comp_large");
+  CALI_MARK_BEGIN("comp_large");
   std::sort(local, local + elements_per_proc);
-  // CALI_MARK_END("comp_large");
-  // CALI_MARK_END("comp");
+  CALI_MARK_END("comp_large");
+  CALI_MARK_END("comp");
 
   free(buffer_send);
   free(buffer_recieve);
@@ -305,10 +321,10 @@ void compare_high(int j) {
 }
 
 int main(int argc, char *argv[]) {
-  // CALI_MARK_BEGIN("main");
+  CALI_MARK_BEGIN("main");
 
-  // cali::ConfigManager mgr;
-  // mgr.start();
+  cali::ConfigManager mgr;
+  mgr.start();
   /******************************************************************************
    * MPI_Init
    ******************************************************************************/
@@ -357,7 +373,7 @@ int main(int argc, char *argv[]) {
       {"reversed", generate_reversed},
       {"perturbed", generate_perturbed}};
 
-  // CALI_MARK_BEGIN("data_init_runtime");
+  CALI_MARK_BEGIN("data_init_runtime");
 
   std::srand(time(NULL) + rank);
   elements_per_proc = num_elements / num_procs;
@@ -372,7 +388,7 @@ int main(int argc, char *argv[]) {
   }
   it->second();
 
-  // CALI_MARK_END("data_init_runtime");
+  CALI_MARK_END("data_init_runtime");
   MPI_Barrier(MPI_COMM_WORLD);
 
   printf("This is rank %d\n", rank);
@@ -382,11 +398,11 @@ int main(int argc, char *argv[]) {
   /******************************************************************************
    * Local Sort
    ******************************************************************************/
-  // CALI_MARK_BEGIN("comp");
-  // CALI_MARK_BEGIN("comp_large");
+  CALI_MARK_BEGIN("comp");
+  CALI_MARK_BEGIN("comp_large");
   std::sort(local, local + elements_per_proc);
-  // CALI_MARK_END("comp_large");
-  // CALI_MARK_END("comp");
+  CALI_MARK_END("comp_large");
+  CALI_MARK_END("comp");
   /******************************************************************************
    * Bitonic Merge with Other Ranks
    ******************************************************************************/
@@ -408,7 +424,7 @@ int main(int argc, char *argv[]) {
   /******************************************************************************
    * Correctness Check
    ******************************************************************************/
-  // CALI_MARK_BEGIN("correctness_check");
+  CALI_MARK_BEGIN("correctness_check");
   bool is_sorted = is_sorted_p();
 
   if (rank == MASTER && !is_sorted) {
@@ -416,50 +432,50 @@ int main(int argc, char *argv[]) {
   } else if (rank == MASTER && is_sorted) {
     printf("SUCCESS: sorted\n");
   }
-  // CALI_MARK_END("correctness_check");
+  CALI_MARK_END("correctness_check");
   /******************************************************************************
    * Cleanup
    ******************************************************************************/
   free(local);
-  // CALI_MARK_END("main");
+  CALI_MARK_END("main");
 
   /******************************************************************************
    * Adiak Metadata
    ******************************************************************************/
-  // adiak::init(NULL);
-  // adiak::launchdate();  // launch date of the job
-  // adiak::libraries();   // Libraries used
-  // adiak::cmdline();     // Command line used to launch the job
-  // adiak::clustername(); // Name of the cluster
-  // adiak::value("algorithm",
-  //              "bitonic");                  // The name of the algorithm you
-  //              are
-  //                                           // using (e.g., "merge",
-  //                                           "bitonic")
-  // adiak::value("programming_model", "mpi"); // e.g. "mpi"
-  // adiak::value("data_type",
-  //              "int"); // The datatype of input elements (e.g.,
-  //                      // double, int, float)
-  // adiak::value("size_of_data_type",
-  //              "4"); // sizeof(datatype) of input
-  // adiak::value("input_size",
-  //              num_elements); // The number of elements in input dataset
-  //              (1000)
-  // adiak::value("input_type",
-  //              input_type); // For sorting, this would be choices: ("Sorted",
-  //                           // "ReverseSorted", "Random", "1_perc_perturbed")
-  // adiak::value("num_procs",
-  //              num_procs); // The number of processors (MPI ranks)
-  // adiak::value("scalability",
-  //              "strong"); // The scalability of your algorithm. choices:
-  //                         // ("strong", "weak")
-  // adiak::value("group_num",
-  //              "6"); // The number of your group (integer, e.g., 1, 10)
-  // adiak::value("implementation_source",
-  //              "online"); // Where you got the source code
-  //
-  // mgr.stop();
-  // mgr.flush();
+  adiak::init(NULL);
+  adiak::launchdate();  // launch date of the job
+  adiak::libraries();   // Libraries used
+  adiak::cmdline();     // Command line used to launch the job
+  adiak::clustername(); // Name of the cluster
+  adiak::value("algorithm",
+               "bitonic");                  // The name of the algorithm you
+               are
+                                            // using (e.g., "merge",
+                                            "bitonic")
+  adiak::value("programming_model", "mpi"); // e.g. "mpi"
+  adiak::value("data_type",
+               "int"); // The datatype of input elements (e.g.,
+                       // double, int, float)
+  adiak::value("size_of_data_type",
+               "4"); // sizeof(datatype) of input
+  adiak::value("input_size",
+               num_elements); // The number of elements in input dataset
+               (1000)
+  adiak::value("input_type",
+               input_type); // For sorting, this would be choices: ("Sorted",
+                            // "ReverseSorted", "Random", "1_perc_perturbed")
+  adiak::value("num_procs",
+               num_procs); // The number of processors (MPI ranks)
+  adiak::value("scalability",
+               "strong"); // The scalability of your algorithm. choices:
+                          // ("strong", "weak")
+  adiak::value("group_num",
+               "6"); // The number of your group (integer, e.g., 1, 10)
+  adiak::value("implementation_source",
+               "online"); // Where you got the source code
+
+  mgr.stop();
+  mgr.flush();
 
   MPI_Finalize();
 
