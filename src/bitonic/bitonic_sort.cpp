@@ -19,6 +19,84 @@ int elements_per_proc;
 int *local;
 
 /**
+ * generates `elements_per_proc` random elements into `local` array
+ * Since those are both global variables, no arguments are needed
+ * values are written into local, so nothing is returned
+ */
+void generate_random() {
+  for (int i = 0; i < elements_per_proc; i++) {
+    local[i] = rand() % 20000;
+  }
+}
+
+/**
+ * generates `elements_per_proc` sorted elements into `local` array
+ * Since those are both global variables, no arguments are needed
+ * values are written into local, so nothing is returned
+ */
+void generate_sorted() {
+  for (int i = 0; i < elements_per_proc; i++) {
+    local[i] = i;
+  }
+}
+
+/**
+ * generates `elements_per_proc` reverse sorted elements into `local` array
+ * Since those are both global variables, no arguments are needed
+ * values are written into local, so nothing is returned
+ */
+void generate_reversed() {
+  for (int i = 0; i < elements_per_proc; i++) {
+    local[i] = n - i - 1;
+  }
+}
+
+/**
+ * generates `elements_per_proc` sorted elements into `local` array
+ * after these are generated, we will swap 1% of the elements
+ *
+ * we also must swap across processes
+ * 1/4 of the 1% will be swapped locally
+ * the other 3/4 will be swapped with other processes
+ *
+ * processes will generate the sorted values according to their rank
+ * i.e. rank 0 will generate 0 through k, rank 1 will generate k + 1 through j, rank 2 will generate j+1 through l, etc.
+ *
+ * Since those are both global variables, no arguments are needed
+ * values are written into local, so nothing is returned
+ */
+void generate_perturbed() {
+  int range = rank * elements_per_proc;
+  for (int i = 0; i < elements_per_proc; i++) {
+    local[i] = range++;
+  }
+
+  int one_percent = num_elements / 100;
+  int num_local_swaps = one_percent / 4;
+  int num_nonlocal_swaps = (one_percent * 3) / 4;
+  
+  for (int i = 0; i < num_local_swaps; i++) {
+    std::swap(local[rand() % elements_per_proc], local[rand() % elements_per_proc]);
+  }
+
+  int curr;
+  int other;
+  
+  for (int i = 0; i < num_nonlocal_swaps; i++) {
+    int index = rand() % elements_per_proc;
+    int other_rank = (r + 1 + i) % p;
+    curr = local[index];
+    
+    MPI_Send(&curr, 1, MPI_INT, other_rank, 0, MPI_COMM_WORLD);
+    MPI_Recv(&other, 1, MPI_INT, other_rank, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+    local[index] = other;
+  }
+}
+
+
+
+/**
  * checks if the arrays are sorted using MPI
  *
  * first, locally checked, then gathered all last elements to make sure they are
@@ -254,21 +332,34 @@ int main(int argc, char *argv[]) {
   if (input_type == nullptr || num_elements == -1 || num_procs == -1) {
     printf("Command line arguments are needed for this program to function. "
            "Please indicate the input type: {random, sorted, "
-           "reverse, perturbed}, the number of elements: {int}, and the number "
-           "of processes {int}.");
+           "reversed, perturbed}, the number of elements: {int}, and the number "
+           "of processes {int}.\n");
     return 1;
   }
   /******************************************************************************
    * Data Generation
    ******************************************************************************/
+// FIXME: use lookup table here instead of else if
   CALI_MARK_BEGIN("data_init_runtime");
-  elements_per_proc = num_elements / num_procs;
-  local = (int *)malloc(elements_per_proc * sizeof(int));
 
   std::srand(time(NULL) + rank);
-
-  for (int i = 0; i < elements_per_proc; i++) {
-    local[i] = rand() % 20000;
+  elements_per_proc = num_elements / num_procs;
+  local = (int *)malloc(elements_per_proc * sizeof(int));
+  
+  if (strcmp(input_type, "random")) {
+    generate_random();
+  }
+  else if (strcmp(input_type, "sorted")) {
+    generate_sorted();
+  }
+  else if (strcmp(input_type, "reversed")) {
+    generate_reverse();
+  }
+  else if (strcmp(input_type, "perturbed")) {
+    generate_perturbed();
+  }
+  else {
+    printf("Invalid array type input, please indicate the input type out of {random, sorted, reverse, perturbed}\n");
   }
 
   CALI_MARK_END("data_init_runtime");
