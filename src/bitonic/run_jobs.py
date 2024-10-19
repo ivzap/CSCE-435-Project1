@@ -1,7 +1,11 @@
+# this automatically runs all the jobs that are required. see input_sizes, input_types, num_procs, and nodes for what we are running
+# this will create all of the job files we need and then schedule them with sbatch
+# credit to ivan zaplatar with small tweaks by ethan rutt for bitonic sort
+
 import subprocess
 from time import sleep
 
-input_sizes = [2**16, 2**18, 2**20, 2**22, 2**24, 2**26]
+input_sizes = [2**16, 2**18, 2**20, 2**22, 2**24, 2**26, 2**28]
 input_types = ["sorted", "random", "reversed", "perturbed"]
 num_procs = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
 nodes = [1, 1, 1, 1, 1, 2, 4, 8, 16, 32]
@@ -18,10 +22,10 @@ for input_size in input_sizes[0:1]:
 #
 ##NECESSARY JOB SPECIFICATIONS
 #SBATCH --job-name=bitonic_sort       #Set the job name to "JobName"
-#SBATCH --time=00:04:00           #Set the wall clock limit
+#SBATCH --time=00:03:00           #Set the wall clock limit
 #SBATCH --nodes=%s              #Request nodes
 #SBATCH --ntasks-per-node=%s    # Request tasks/cores per node
-#SBATCH --mem=64G                 #Request GB per node
+#SBATCH --mem=8G                 #Request GB per node
 #SBATCH --output=output.%%j       #Send stdout/err to "output.[jobID]"
 #
 ##OPTIONAL JOB SPECIFICATIONS
@@ -48,7 +52,8 @@ mpirun -np $processes ./bitonic_sort -p $processes -n $array_size -t $input_type
             with open('auto.mpi.grace_job', 'w') as file:
                 file.write(script_template)
 
-	    sleep(0.5)
+	    sleep(1)
             command = ["sbatch", "auto.mpi.grace_job", str(input_size), str(num_proc), str(input_type)]
             subprocess.Popen(command)
+	    sleep(1)
 
