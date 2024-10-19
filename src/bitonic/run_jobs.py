@@ -1,12 +1,13 @@
 import subprocess
+from time import sleep
 
 input_sizes = [2**16, 2**18, 2**20, 2**22, 2**24, 2**26]
 input_types = ["sorted", "random", "reversed", "perturbed"]
 num_procs = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
 nodes = [1, 1, 1, 1, 1, 2, 4, 8, 16, 32]
 
-for input_size in input_sizes:
-    for input_type in input_types:
+for input_size in input_sizes[0:1]:
+    for input_type in input_types[0:1]:
         for i, num_proc in enumerate(num_procs):
             tasks_per_node = num_proc//nodes[i]
             script_template = """#!/bin/bash
@@ -37,6 +38,7 @@ input_type=$3
 module load intel/2020b       # load Intel software stack
 module load CMake/3.12.1
 module load GCCcore/8.3.0
+module load PAPI/6.0.0
 
 CALI_CONFIG="spot(output=p${processes}-a${array_size}-t${input_type}.cali, \
     time.variance,profile.mpi)" \
@@ -46,5 +48,7 @@ mpirun -np $processes ./bitonic_sort -p $processes -n $array_size -t $input_type
             with open('auto.mpi.grace_job', 'w') as file:
                 file.write(script_template)
 
-            command = ["sbatch", "auto.mpi.grace_job", input_size, num_proc, input_type]
+	    sleep(0.5)
+            command = ["sbatch", "auto.mpi.grace_job", str(input_size), str(num_proc), str(input_type)]
             subprocess.Popen(command)
+
