@@ -83,11 +83,11 @@ int main (int argc, char * argv[])
     mgr.start();
 
     int inputSize;
-    char inputType;
+    char* inputType;
     
     if (argc == 3) {
         inputSize = atoi(argv[1]);
-        inputType = *argv[2];
+        inputType = argv[2];
     } else {
         printf("\n Please provide the input size and type");
         return 0;
@@ -113,7 +113,6 @@ int main (int argc, char * argv[])
     adiak::value("data_type", "double"); // The datatype of input elements (e.g., double, int, float)
     adiak::value("size_of_data_type", sizeof(double)); // sizeof(datatype) of input elements in bytes (e.g., 1, 2, 4)
     adiak::value("input_size", inputSize); // The number of elements in input dataset (1000)
-    adiak::value("input_type", "Random"); // For sorting, this would be choices: ("Sorted", "ReverseSorted", "Random", "1_perc_perturbed")
     adiak::value("num_procs", numtasks); // The number of processors (MPI ranks)
     adiak::value("scalability", "strong"); // The scalability of your algorithm. choices: ("strong", "weak")
     adiak::value("group_num", "6"); // The number of your group (integer, e.g., 1, 10)
@@ -122,14 +121,44 @@ int main (int argc, char * argv[])
     /*************** Input Validation *******************/
     
     CALI_MARK_BEGIN("data_init_runtime");
-
+    //printf("\n %s", inputType);
     double input[inputSize];
-    
-    for (int i = 0; i < inputSize; i++) {
-        input[i] = rand() % 2000;
-       // printf("\n %f", input[i]);
-    }    
+    if (strcmp(inputType, "Random") == 0) {
+        adiak::value("input_type", "Random"); // For sorting, this would be choices: ("Sorted", "ReverseSorted", "Random", "1_perc_perturbed")
+        //printf("\n random array");
+        for (int i = 0; i < inputSize; i++) {
+            input[i] = rand() % 2000;
+            // printf("\n %f", input[i]);
+        }    
+    } else if (strcmp(inputType, "Sorted") == 0) {
+        adiak::value("input_type", "Sorted"); // For sorting, this would be choices: ("Sorted", "ReverseSorted", "Random", "1_perc_perturbed")
+        //printf("\n sorted array");
+        for (int i = 0; i < inputSize; i++) {
+            input[i] = i;
+        }
+    } else if (strcmp(inputType, "ReverseSorted") == 0) {
+        adiak::value("input_type", "ReverseSorted"); // For sorting, this would be choices: ("Sorted", "ReverseSorted", "Random", "1_perc_perturbed")
+        //printf("\n reversed array");
+        for (int i = 0; i < inputSize; i++) {
+            input[i] = inputSize - i;
+        }
+    } else if (strcmp(inputType, "1_perc_perturbed") == 0) {
+        adiak::value("input_type", "1_perc_perturbed"); // For sorting, this would be choices: ("Sorted", "ReverseSorted", "Random", "1_perc_perturbed")
+        //printf("\n 1\% perturbed array");
+        for (int i = 0; i < inputSize; i++) {
+            input[i] = i;
+        }
 
+        int one_percent = inputSize / 100;
+        
+        for (int i = 0; i < one_percent; i++) {
+            std::swap(input[rand() % inputSize], input[rand() % inputSize]);          
+        }        
+
+    } else {
+        printf("Invalid array type");
+        return 0;
+    }
     double local[inputSize]; 
     MPI_Scatter(input, elements_per_proc, MPI_DOUBLE, local, elements_per_proc, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     for (int i = 0; i < elements_per_proc; i++) {
@@ -146,50 +175,82 @@ int main (int argc, char * argv[])
     CALI_MARK_END("comp");    
 
     int log_procs = log2(numtasks);
-    int active_procs = numtasks;    
-    CALI_MARK_BEGIN("comm");
-    
+    int active_procs = numtasks;     
+   
+
     // not all procs recv so the avg time is scewed for that reason
-    CALI_MARK_BEGIN("comm_large");    
 
     for (int i = 0; i < log_procs; i++) {
         if (taskid < active_procs /2) {
+            CALI_MARK_BEGIN("comm");
+            CALI_MARK_BEGIN("comm_large");    
+            
             double recv[inputSize/active_procs];
             MPI_Recv(recv, inputSize/active_procs, MPI_DOUBLE, taskid + active_procs/2, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            CALI_MARK_END("comm_large");
+            CALI_MARK_END("comm");  
+        
+            CALI_MARK_BEGIN("comp");
+            CALI_MARK_BEGIN("comp_large");    
+            
             double new_local[2 * inputSize/active_procs];  
             merge(new_local, local, recv, inputSize / active_procs, inputSize / active_procs);
             for (int i = 0; i < 2 * inputSize / active_procs; i++) {
                 local[i] = new_local[i];
                // printf("\n %d: %f", taskid, local[i]);   
-            }   
-        } else if (taskid <= active_procs) {
+            }
+            
+            CALI_MARK_END("comp_large");
+            CALI_MARK_END("comp");    
+               
+        } else if (taskid < active_procs) {
+            CALI_MARK_BEGIN("comm");
+            CALI_MARK_BEGIN("comm_large");    
+               
             int dest = taskid - active_procs / 2;
             MPI_Send(local, inputSize / active_procs, MPI_DOUBLE, dest, 0, MPI_COMM_WORLD);
+            
+            CALI_MARK_END("comm_large");
+            CALI_MARK_END("comm");  
+            
         }
         
+        CALI_MARK_BEGIN("comm");
+        CALI_MARK_BEGIN("comm_large");    
+        
+        MPI_Barrier(MPI_COMM_WORLD);  
+        
+        CALI_MARK_END("comm_large");
+        CALI_MARK_END("comm");  
+                
         active_procs /= 2;
     }        
     
-    CALI_MARK_END("comm_large");
-    CALI_MARK_END("comm");  
 
 
     /*************** Output Validation ******************/
 
-    CALI_MARK_BEGIN("correctness_check");
 
     if (taskid == 0) {
         for (int i = 0; i < inputSize; i++) {
-           // printf("\n %d: %f", taskid, local[i]);
+            //printf("\n %d: %f", taskid, local[i]);
          }
+        CALI_MARK_BEGIN("correctness_check");   
         printf("\n Is Sorted: %d", is_sorted(local, inputSize));   
+        CALI_MARK_END("correctness_check");     
     } 
+
     
-    CALI_MARK_END("correctness_check");    
+    
     CALI_MARK_END("main");
-      
+    
+    
+  
+    
+    
     mgr.stop();
     mgr.flush();
-           
-    MPI_Finalize(); 
+       
+    MPI_Finalize();
+   
 }
