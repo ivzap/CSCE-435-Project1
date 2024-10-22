@@ -657,22 +657,26 @@ For the parallel merge sort algorithm, it is expected that we will not see major
 
 When doing performance analysis for merge sort the Max time/rank was used instead of the average. Due to the algorithms nature of communication the computation and communication performance is dictated by the Max time. The data from each process is conjoined into one process in the end. This is where we expect to see the maximum occur which gives us the correct run time of every process.
 
+# Computation
 The figures below show the runtime of the computation portion of the algorithm as a funciton of the number of processors used. The four input types are present on each graph.
-![image](https://github.com/user-attachments/assets/4a48a2d8-f1ab-464a-b555-bcfd8c597d92)
-![image](https://github.com/user-attachments/assets/0de334d8-f077-4f57-9da6-ce43bf400291)
-![image](https://github.com/user-attachments/assets/e55e02ec-cf26-41b1-bcc4-e796e1f4e405)
-![image](https://github.com/user-attachments/assets/21578d28-429a-43e9-9c79-737562ad3e10)
-![image](https://github.com/user-attachments/assets/7f511a59-9251-4a22-85cc-5bf713077d45)
-![image](https://github.com/user-attachments/assets/3e446911-369e-4dab-b0bf-80d3187999e1)
+![image](https://github.com/user-attachments/assets/e53e075c-241d-4886-a3c6-047d5b76b7ee)
+![image](https://github.com/user-attachments/assets/98b12772-2efc-41be-beeb-1de6e381dabb)
+![image](https://github.com/user-attachments/assets/859a1bf3-e29c-4278-8b8d-b6729c7b5697)
+![image](https://github.com/user-attachments/assets/f081f3f1-6e27-4f02-ad75-7fff027f48b9)
+![image](https://github.com/user-attachments/assets/5d975e4c-5096-476f-988e-eb38f0dad056)
+![image](https://github.com/user-attachments/assets/5d975e4c-5096-476f-988e-eb38f0dad056)
+
 
 It can clearly be seen that the computation time decreases very rapidly as the number of processors increase initially, but as the number of processors is continually increased, the number computation time approaches a limit. From this it can be stated that once the number of processors increases past 8 or 16 the benefit in performance is seemingly negligible. We can also see that there is almost no difference among the different types of input as expected.
 
+# Communication
 The figures below show the runtime of the communication portion of the algorithm as a function of the number of processors used. The four input types are present on each graph
-![image](https://github.com/user-attachments/assets/0a297547-160a-40a7-952f-0fc6b6dfde74)
-![image](https://github.com/user-attachments/assets/382cb4a6-3c4d-48d7-af45-90371741aebd)
-![image](https://github.com/user-attachments/assets/4d462e8a-09a4-47e5-8b92-fdd02963a982)
-![image](https://github.com/user-attachments/assets/b8ba31c8-bf39-4df1-89d9-cfe7fc5dbf33)
-![image](https://github.com/user-attachments/assets/2ce8a3a3-bf00-4871-b498-5e2a94a28664)
-![image](https://github.com/user-attachments/assets/71fc7f82-072a-4337-bba9-576f45a39019)
+![image](https://github.com/user-attachments/assets/a5713fa7-7dac-43e0-9650-46c21667dcd4)
+![image](https://github.com/user-attachments/assets/0337070c-0753-440b-86ff-5bb7f75774df)
+![image](https://github.com/user-attachments/assets/f96d7ba6-a278-4aab-8a9b-0b03fc521693)
+![image](https://github.com/user-attachments/assets/67644d01-28a9-476e-b607-de8b7f14670d)
+![image](https://github.com/user-attachments/assets/dace2278-d40a-4437-81bc-567976455ea0)
+![image](https://github.com/user-attachments/assets/6e78743e-ee9e-4d5c-a0d6-490d62abfba6)
+
 
 These graphs are slightly more tricky to read compared to the computation graphs. This is due to the outliers present from the data collected. Multiple rounds of data tests were run as an attempt to remove these outlier points but they still remained. They occur mostly with the 128 and 256 processor tests, and it can not be said which input types they occur for most often. Aside from these outliers we do see a trend in the commuication time. For input sizes, 2^16 and 2^18 the communication times are similar (despite the outliers). This is expected for the smaller input sizes. However, as the input size increases to 2^20 and 2^22 that first processor increase plays a more significant role than the later ones. The overhead for communication is initially significant but eventually tapers off. So as the processors begin to increases we see a larger difference until about 16 or 32 processors where it levels off. Finally for the largest input sizes of 2^24 and 2^26 (2^28 was not available for merge sort as referenced above) the outliers make less of an inpact and the trend can be seen better. The dramatic increase in communication time in the beginning is again due to the initial overhead of communication. However we dont see a large difference between the communication times for 8, 16, 32, and 64 processors. This later jump in 128 and 256 can possibly be explained by the increase in the number of nodes needed for communication. It makes sense that communication within a node is faster and cheaper than communication to extneral nodes. When we reach 64 processors and above we require more and more nodes. 
