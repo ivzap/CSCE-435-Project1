@@ -657,7 +657,7 @@ For the parallel merge sort algorithm, it is expected that we will not see major
 
 When doing performance analysis for merge sort the Max time/rank was used instead of the average. Due to the algorithms nature of communication the computation and communication performance is dictated by the Max time. The data from each process is conjoined into one process in the end. This is where we expect to see the maximum occur which gives us the correct run time of every process.
 
-# Computation
+#### Computation
 The figures below show the runtime of the computation portion of the algorithm as a funciton of the number of processors used. The four input types are present on each graph.
 ![image](https://github.com/user-attachments/assets/e53e075c-241d-4886-a3c6-047d5b76b7ee)
 ![image](https://github.com/user-attachments/assets/98b12772-2efc-41be-beeb-1de6e381dabb)
@@ -669,7 +669,7 @@ The figures below show the runtime of the computation portion of the algorithm a
 
 It can clearly be seen that the computation time decreases very rapidly as the number of processors increase initially, but as the number of processors is continually increased, the number computation time approaches a limit. From this it can be stated that once the number of processors increases past 8 or 16 the benefit in performance is seemingly negligible. We can also see that there is almost no difference among the different types of input as expected.
 
-# Communication
+#### Communication
 The figures below show the runtime of the communication portion of the algorithm as a function of the number of processors used. The four input types are present on each graph
 ![image](https://github.com/user-attachments/assets/a5713fa7-7dac-43e0-9650-46c21667dcd4)
 ![image](https://github.com/user-attachments/assets/0337070c-0753-440b-86ff-5bb7f75774df)
