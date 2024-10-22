@@ -650,4 +650,5 @@ This implementation of merge sort has inherent limitations when it comes to para
 * (size of type) $\times$ (input size) $\times$ (number of arrays held in memory) = memory used
 * 64 $\times$ 2^26 $\times$ 2 = 2^33
 * 64 $\times$ 2^28 $\times$ 2 = 2^35
+
 These calculations show that the memory gets filled up when running with an input size of 2^28. 
