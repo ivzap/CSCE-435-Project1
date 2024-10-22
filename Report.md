@@ -441,7 +441,7 @@ endf
 - There will be a test on 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024 processors for each input size
 - Test of performance and evaluation with utilize Caliper and Thicket to visualize the performance of each algorithm and how they compare to one another. This will also determine which algorithms have their strengths/weaknesses in parallel or sequential methods.
 
-### 3. Implementation Descriptions
+## 3. Implementation Descriptions
 
 #### Radix Sort
 I struggled to find any correct implementations of parallel radix sort, so I developed my own. The core algorithm remains the same: find the maximum element, iterate over the digits, count the frequency of each digit, determine where each element should go, and repeat. The challenging part in the parallel version was determining where each element belongs. Specifically, we need to identify which processor to place the element in and its relative position within that processor. 
@@ -643,3 +643,11 @@ scalability	strong
 group_num	6
 implementation_source	online
 ```
+## 4. Performance evaluation
+
+### Merge Sort
+This implementation of merge sort has inherent limitations when it comes to parallelization. These limitations come from the fact that as the combination of subarrays occurs, the number of active processors decreases. When fewer processors are doing work, the burden of work on those processors increases. In the very last step of the algorithm two halves of the initial input are combined into one array. Thus, the algorithm is limited by memory. This implementation holds two arrays of size `input_size`. Because the algorithm was implemented using doubles (64 bits) the largest input that could be given to the merge sort algorithm was 2^26. We made the assumption that each process has 4GB (2^35) of memory available (originally 8GB but have to account for libraries like MPI). The calculations are show below:
+* (size of type) \time (input size) \time (number of arrays held in memory) = memory used
+* 64 \times 2^26 \times 2 = 2^33
+* 64 \times 2^28 \times 2 = 2^35
+These calculations show that the memory gets filled up when running with an input size of 2^28. 
