@@ -2,6 +2,7 @@
 
 for dir in cali/reversed/*; do
 	files=$(ls $dir)
+	echo "$dir"
 	if ! echo $files | grep -q "p2"; then
 		echo "p2 missing"
 	fi
