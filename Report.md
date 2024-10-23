@@ -441,14 +441,14 @@ endf
 - There will be a test on 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024 processors for each input size
 - Test of performance and evaluation with utilize Caliper and Thicket to visualize the performance of each algorithm and how they compare to one another. This will also determine which algorithms have their strengths/weaknesses in parallel or sequential methods.
 
-### 3. Implementation Descriptions
+## 3. Implementation Descriptions
 
 #### Radix Sort
-I struggled to find any correct implementations of parallel radix sort, so I developed my own. The core algorithm remains the same: find the maximum element, iterate over the digits, count the frequency of each digit, determine where each element should go, and repeat. The challenging part in the parallel version was determining where each element belongs. Specifically, we need to identify which processor to place the element in and its relative position within that processor. 
+I struggled to find any correct implementations of parallel radix sort, so I developed my own. The core algorithm remains the same: find the maximum element, iterate over the digits, count the frequency of each digit, determine where each element should go, and repeat. The challenging part in the parallel version was determining where each element belongs. Specifically, we need to identify which processor to place the element in and its relative position within that processor.
 
-I introduced a concept I call the "start" variable to handle this. The "start" represents where an element would be placed in a non-parallel version. We then determine the processor by calculating `start / arr_size` and the relative position by `start % arr_size`. 
+I introduced a concept I call the "start" variable to handle this. The "start" represents where an element would be placed in a non-parallel version. We then determine the processor by calculating `start / arr_size` and the relative position by `start % arr_size`.
 
-To compute the start values, we gather the digit counts for each processor. We begin with a base value of 0 and iterate through each digit for every processor, assigning a starting position for each digit based on the base. We then update the base by adding the count of elements for that digit. For example, if we have 10 elements, the new base becomes 10, and any further elements with that digit will be placed starting from this new base. 
+To compute the start values, we gather the digit counts for each processor. We begin with a base value of 0 and iterate through each digit for every processor, assigning a starting position for each digit based on the base. We then update the base by adding the count of elements for that digit. For example, if we have 10 elements, the new base becomes 10, and any further elements with that digit will be placed starting from this new base.
 
 At the end of this process, we have a `gathered_cnt[p][digit]` array, which tells each processor where to place elements with a specific digit. After placing an element within a processor, we shift the start value for that processor by one. This part of the algorithm was the most complex. The rest simply involves communicating between processors to place elements in the correct locations. We repeat this for each phase until all digits of the largest element are processed.
 
@@ -456,10 +456,12 @@ At the end of this process, we have a `gathered_cnt[p][digit]` array, which tell
 
 Sample Sort is an effective sorting algorithm for working in parallel. I began with implementing the algorithm with having the algorithm check if the provided array was below a threshold and given that it was it would began with using the quick sort algorithm. This quick sort algorithm I fully implemented without using the standard C library to gain a deeper understanding of how the elements in the array were being sorted. It begans by selecting a pivot point and comparing with elements until the random pivot point that was selected reaches the center of the list. Once the center has been reached it splits the array and the same process occurs recursively.
 When the array did not meet the threshold the array is split by how many elements there are by how many processors there are to determine how many elements are local to the processor. In other words how many local elements that the processors have to evaluate. These use splitters to divide the array into buckets to be sent to processes. The splitters were gathered to gather all the splitters that were created. The root process then broadcasts the pivots of all the local sections to all the processes. A global bucket list and local bucket list were created to store all the buckets that are evaluated. The local buckets range from specific points divided by the amount of processors even though the over sampling. Once the local buckets are gathered together into the list this list is then gathered using a vector to the global bucket list to be then quick sorted again to have the final array.
-This algorithm was immensely challenging for me given the complexity of the algorithm and MPI functionality being challenging. I was unaware that we were allowed to use the standard C library quick sort and implemented the algorithm from scratch at first. I had difficulty particularly with the gather functionality with the buckets. I managed to spend a lot of time on the implementation and attend office hours and get assistance from the TAs. I nearly completed the entire algorithm, however, unfortunately it was the final global bucket sort that I was unable to manage to figure out. My global bucket list was empty and I could not populate it correctly.  
+This algorithm was immensely challenging for me given the complexity of the algorithm and MPI functionality being challenging. I was unaware that we were allowed to use the standard C library quick sort and implemented the algorithm from scratch at first. I had difficulty particularly with the gather functionality with the buckets. I managed to spend a lot of time on the implementation and attend office hours and get assistance from the TAs. I nearly completed the entire algorithm, however, unfortunately it was the final global bucket sort that I was unable to manage to figure out. My global bucket list was empty and I could not populate it correctly.
 
 #### Merge Sort
-The parallel merge sort algorithm was implmented by having each process sort individual sections of an array then combining them into one sorted array in the final process. The combination of each process is done by combining the local arrays of process i with process i + active_procs / 2. This creates a logarithmic pattern of combination. The number of of active processes starts as n which is the total number of processes avaible, but it is divided in half after each level of combination. As the local arrays combine and become larger, the number of processes that are involved in communication shrinks. By the end, all local arrays have combined into one process. Because the entire array must fit into the memory of one processor in the end, both data initialization and correctness checking are done in one processor.
+The parallel merge sort algorithm was implmented by having each process sort individual sections of an array then combining them into one sorted array in the final process. The combination of each process is done by combining the local arrays of process i with process i + active_procs / 2. This creates a logarithmic pattern of combination. The number of of active processes starts as n which is the total number of processes avaible, but it is divided in half after each level of combination. As the local arrays combine and become larger, the number of processes that are involved in communication shrinks. By the end, all local arrays have combined into one process. Because the entire array must fit into the memory of one processor in the end, both data initialization and correctness checking are done in one processor. Below is a visual representation of how the processors are combining the subarrays into one main array.
+![merge_sort combination of subarrays visualized](https://github.com/user-attachments/assets/744a8fd0-9658-41a7-94ce-93520f12a893)
+
 
 #### Bitonic Sort
 * The parallel bitonic sort algorithm was implemented by having each process
@@ -641,3 +643,40 @@ scalability	strong
 group_num	6
 implementation_source	online
 ```
+## 4. Performance evaluation
+
+### Merge Sort
+This implementation of merge sort has inherent limitations when it comes to parallelization. These limitations come from the fact that as the combination of subarrays occurs, the number of active processors decreases. When fewer processors are doing work, the burden of work on those processors increases. In the very last step of the algorithm two halves of the initial input are combined into one array. Thus, the algorithm is limited by memory. This implementation holds two arrays of size `input_size`. Because the algorithm was implemented using doubles (64 bits) the largest input that could be given to the merge sort algorithm was 2^26. We made the assumption that each process has 4GB (2^35) of memory available (originally 8GB but have to account for libraries like MPI). The calculations are show below:
+* (size of type) $\times$ (input size) $\times$ (number of arrays held in memory) = memory used
+* 64 $\times$ 2^26 $\times$ 2 = 2^33
+* 64 $\times$ 2^28 $\times$ 2 = 2^35
+
+These calculations show that the memory gets filled up when running with an input size of 2^28.
+
+For the parallel merge sort algorithm, it is expected that we will not see major differences in the various input types. This is becuase the data is sent and received as well as traversed and "sorted" regardless of how it comes in.
+
+When doing performance analysis for merge sort the Max time/rank was used instead of the average. Due to the algorithms nature of communication the computation and communication performance is dictated by the Max time. The data from each process is conjoined into one process in the end. This is where we expect to see the maximum occur which gives us the correct run time of every process.
+
+#### Computation
+The figures below show the runtime of the computation portion of the algorithm as a funciton of the number of processors used. The four input types are present on each graph.
+![image](https://github.com/user-attachments/assets/e53e075c-241d-4886-a3c6-047d5b76b7ee)
+![image](https://github.com/user-attachments/assets/98b12772-2efc-41be-beeb-1de6e381dabb)
+![image](https://github.com/user-attachments/assets/859a1bf3-e29c-4278-8b8d-b6729c7b5697)
+![image](https://github.com/user-attachments/assets/f081f3f1-6e27-4f02-ad75-7fff027f48b9)
+![image](https://github.com/user-attachments/assets/5d975e4c-5096-476f-988e-eb38f0dad056)
+![image](https://github.com/user-attachments/assets/5d975e4c-5096-476f-988e-eb38f0dad056)
+
+
+It can clearly be seen that the computation time decreases very rapidly as the number of processors increase initially, but as the number of processors is continually increased, the number computation time approaches a limit. From this it can be stated that once the number of processors increases past 8 or 16 the benefit in performance is seemingly negligible. We can also see that there is almost no difference among the different types of input as expected.
+
+#### Communication
+The figures below show the runtime of the communication portion of the algorithm as a function of the number of processors used. The four input types are present on each graph
+![image](https://github.com/user-attachments/assets/a5713fa7-7dac-43e0-9650-46c21667dcd4)
+![image](https://github.com/user-attachments/assets/0337070c-0753-440b-86ff-5bb7f75774df)
+![image](https://github.com/user-attachments/assets/f96d7ba6-a278-4aab-8a9b-0b03fc521693)
+![image](https://github.com/user-attachments/assets/67644d01-28a9-476e-b607-de8b7f14670d)
+![image](https://github.com/user-attachments/assets/dace2278-d40a-4437-81bc-567976455ea0)
+![image](https://github.com/user-attachments/assets/6e78743e-ee9e-4d5c-a0d6-490d62abfba6)
+
+
+These graphs are slightly more tricky to read compared to the computation graphs. This is due to the outliers present from the data collected. Multiple rounds of data tests were run as an attempt to remove these outlier points but they still remained. They occur mostly with the 128 and 256 processor tests, and it can not be said which input types they occur for most often. Aside from these outliers we do see a trend in the commuication time. For input sizes, 2^16 and 2^18 the communication times are similar (despite the outliers). This is expected for the smaller input sizes. However, as the input size increases to 2^20 and 2^22 that first processor increase plays a more significant role than the later ones. The overhead for communication is initially significant but eventually tapers off. So as the processors begin to increases we see a larger difference until about 16 or 32 processors where it levels off. Finally for the largest input sizes of 2^24 and 2^26 (2^28 was not available for merge sort as referenced above) the outliers make less of an inpact and the trend can be seen better. The dramatic increase in communication time in the beginning is again due to the initial overhead of communication. However we dont see a large difference between the communication times for 8, 16, 32, and 64 processors. This later jump in 128 and 256 can possibly be explained by the increase in the number of nodes needed for communication. It makes sense that communication within a node is faster and cheaper than communication to extneral nodes. When we reach 64 processors and above we require more and more nodes.
