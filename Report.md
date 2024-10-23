@@ -658,6 +658,10 @@ My radix sort implementation overall shows that it was able to succesfully sort 
 
 ![speedup_2^22_ex2](https://github.com/user-attachments/assets/1cc1a86b-076c-4a55-b9a0-4d04d3cc9f38)
 
+### Main
+![weak_scaling_ex4](https://github.com/user-attachments/assets/573665cc-8027-452e-889f-52460e0448cd)
+
+Something interesting to note is that in our random we tested for a small number of digits and it resulted in significantly less time required to sort then the reversed, and 1% disordered as radix is highly dependent on the max integer within our array.
 
 ### Merge Sort
 This implementation of merge sort has inherent limitations when it comes to parallelization. These limitations come from the fact that as the combination of subarrays occurs, the number of active processors decreases. When fewer processors are doing work, the burden of work on those processors increases. In the very last step of the algorithm two halves of the initial input are combined into one array. Thus, the algorithm is limited by memory. This implementation holds two arrays of size `input_size`. Because the algorithm was implemented using doubles (64 bits) the largest input that could be given to the merge sort algorithm was 2^26. We made the assumption that each process has 4GB (2^35) of memory available (originally 8GB but have to account for libraries like MPI). The calculations are show below:
