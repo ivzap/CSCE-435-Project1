@@ -725,3 +725,41 @@ From these plots, it can be seen that the speedup increases linearly with the nu
 
 Based on the graphs merge sort is a very parallelizable algorithm because it is computation heavy without a large requirement for communication. It's biggest limitation is the processor's memory. This does not allow parallel merge sort to sort anything above its sequential equivalent.
 
+## Bitonic Sort
+* My bitonic sort implementation had some peculiar behavior for high
+  processors, showing that even with large input sizes, not using 1024
+  processors might still be faster. I suspect this is because I use quicksort
+  to sort locally, and then bitonic merging is done between processes. Just
+  using quicksort might be faster than worrying about the heavy overhead for
+  communicating with lots of different processes. `comp` was still lower with
+  more processors since each processor was sorting less elements. My algorithm
+  was able to run 1024 processors with 2 ** 28 elements with only 8 GB of
+  memory, but due to various issues with grace including `hydra` and `oom`
+  errors that popped up in various areas (even as low as 32 processors, so I
+  don't think it was a memory issue since I can run 2 ** 28 and 1024 processors
+  successfully).
+* Note that I have only included successful runs for all data, since I didn't run perturbed until later on, due to queue issues I was not able to get very much data for perturbed.
+
+### Strong
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong/strong_65536.png)
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong/strong_262144.png)
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong/strong_1048576.png)
+
+### Strong Speedup
+#### 2 ** 16
+##### comm
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_65536_comm.png)
+##### comp
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_65536_comp.png)
+##### main
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_65536_main.png)
+
+### Weak
+#### random
+##### comm
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/weak/weak_random_comm.png)
+##### comp
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/weak/weak_random_comp.png)
+##### main
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/weak/weak_random_main.png)
+
