@@ -678,7 +678,8 @@ The figures below show the runtime of the computation portion of the algorithm a
 ![image](https://github.com/user-attachments/assets/859a1bf3-e29c-4278-8b8d-b6729c7b5697)
 ![image](https://github.com/user-attachments/assets/f081f3f1-6e27-4f02-ad75-7fff027f48b9)
 ![image](https://github.com/user-attachments/assets/5d975e4c-5096-476f-988e-eb38f0dad056)
-![image](https://github.com/user-attachments/assets/5d975e4c-5096-476f-988e-eb38f0dad056)
+![image](https://github.com/user-attachments/assets/0efcdc9d-3bf1-4b13-a286-e2ef72649d7d)
+
 
 
 It can clearly be seen that the computation time decreases very rapidly as the number of processors increase initially, but as the number of processors is continually increased, the number computation time approaches a limit. From this it can be stated that once the number of processors increases past 8 or 16 the benefit in performance is seemingly negligible. We can also see that there is almost no difference among the different types of input as expected.
@@ -694,3 +695,29 @@ The figures below show the runtime of the communication portion of the algorithm
 
 
 These graphs are slightly more tricky to read compared to the computation graphs. This is due to the outliers present from the data collected. Multiple rounds of data tests were run as an attempt to remove these outlier points but they still remained. They occur mostly with the 128 and 256 processor tests, and it can not be said which input types they occur for most often. Aside from these outliers we do see a trend in the commuication time. For input sizes, 2^16 and 2^18 the communication times are similar (despite the outliers). This is expected for the smaller input sizes. However, as the input size increases to 2^20 and 2^22 that first processor increase plays a more significant role than the later ones. The overhead for communication is initially significant but eventually tapers off. So as the processors begin to increases we see a larger difference until about 16 or 32 processors where it levels off. Finally for the largest input sizes of 2^24 and 2^26 (2^28 was not available for merge sort as referenced above) the outliers make less of an inpact and the trend can be seen better. The dramatic increase in communication time in the beginning is again due to the initial overhead of communication. However we dont see a large difference between the communication times for 8, 16, 32, and 64 processors. This later jump in 128 and 256 can possibly be explained by the increase in the number of nodes needed for communication. It makes sense that communication within a node is faster and cheaper than communication to extneral nodes. When we reach 64 processors and above we require more and more nodes. 
+
+#### Total Time
+By comparing the computation and communication times it is clear that the merge sort algorithm is dependent on the computaiton time for larger input sizes and communication for smaller input sizes. Below are graph showing the total time of the algorithm vs the number of processors. This is the computation time plus the communication time.
+![image](https://github.com/user-attachments/assets/48db468e-65f4-4813-a2ad-749a4cc407c2)
+![image](https://github.com/user-attachments/assets/7278516e-b39c-4657-906f-cdf9035e179e)
+![image](https://github.com/user-attachments/assets/04a302b4-6821-4e7a-876a-60e3bd174fb9)
+![image](https://github.com/user-attachments/assets/af48231b-1f0e-48aa-9dcd-5e52bc8867cd)
+![image](https://github.com/user-attachments/assets/5feae580-7577-4744-956d-711b512a1b05)
+![image](https://github.com/user-attachments/assets/e8373c1d-f315-4749-885b-7e161422886a)
+
+For input sizes of 2^26, 2^18, and 2^20 the graphs look very similar to those above in the Communicatio section. This confirms the idea that in lower input sizes the communication overhead makes a larger inpact on the overall run time. However, as we get to the larger inputs of 2^22, 2^24, and 2^26, we see the graphs become more and more similar to the computation graphs. This is because at the larger input sizes, the computation portion of the algorithm takes far longer than the communication overhead does.
+
+#### Speedup
+
+The speedup of the merge sort algorithm was calculated by taking the total time (which is the time it would take to run on one processor) and divding it by the max time/rank. Below are the graphs for the speedup vs the number of processors. 
+![image](https://github.com/user-attachments/assets/1827b4e1-2348-4e56-9a16-ca19ebad7ce7)
+![image](https://github.com/user-attachments/assets/9c27b0d4-35aa-49f7-81dc-d34730077c07)
+![image](https://github.com/user-attachments/assets/6a63b069-f4cb-4340-b1f1-51050cacb151)
+![image](https://github.com/user-attachments/assets/cba1d5ae-ac9f-4257-990e-7361fe4f9137)
+![image](https://github.com/user-attachments/assets/85643bf1-cc51-4bd8-a31c-d688e3682d44)
+![image](https://github.com/user-attachments/assets/7efb1a13-41a9-43ac-b414-003a8f266ada)
+
+From these plots, it can be seen that the speedup increases linearly with the number of processes. It does not seem like we have hit a limitation for the parallelization of merge sort, however we are still limited by processor memory size (same as sequential merge sort). It is notable that on the 2^16 and 2^18 inputs sizes there seems to be more descrepancies in the speedup between the different input types, but I do not think this is caused by the change in input types. 
+
+Based on the graphs merge sort is a very parallelizable algorithm because it is computation heavy without a large requirement for communication. It's biggest limitation is the processor's memory. This does not allow parallel merge sort to sort anything above its sequential equivalent.
+
