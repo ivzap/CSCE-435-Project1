@@ -645,6 +645,20 @@ implementation_source	online
 ```
 ## 4. Performance evaluation
 
+### Radix Sort
+My radix sort implementation overall shows that it was able to succesfully sort in parallel various input size but also showed some of its limitations. The first limitation is that a high amount of memory will be required when the processor arrays arent sorted, as each one element that must be placed in a different processor must be communicated to such processor. During experimentation I frequently saw for low processor count that MPI would run out of memory as each processor requires more and more memory. To avoid this limitation we could reimpliment the algorithm to communicate data in batches as this would reduce the stress on the internal MPI message buffers and our local memory. Another limitation comes from the fact that we need to create a duplicate temp array which can double our memory usage, this cannot be avoided as we need somewhere to store the elements without modifing the current array. Other issues I saw were with large processes, I would get HYDRA errors, but it turns out this is due to a faulty network for the cluster.
+
+#### Comm
+
+![strong_scaling_ex1](https://github.com/user-attachments/assets/abb4ddfd-7a23-426c-8826-42711647780b)
+
+![weak_scaling_ex2](https://github.com/user-attachments/assets/6c1cefb8-2865-4c5f-b4df-59f98fb3eb57)
+
+![weak_scaling_ex3](https://github.com/user-attachments/assets/24e3e42e-1124-4bf3-b259-3528903aafbf)
+
+![speedup_2^22_ex2](https://github.com/user-attachments/assets/1cc1a86b-076c-4a55-b9a0-4d04d3cc9f38)
+
+
 ### Merge Sort
 This implementation of merge sort has inherent limitations when it comes to parallelization. These limitations come from the fact that as the combination of subarrays occurs, the number of active processors decreases. When fewer processors are doing work, the burden of work on those processors increases. In the very last step of the algorithm two halves of the initial input are combined into one array. Thus, the algorithm is limited by memory. This implementation holds two arrays of size `input_size`. Because the algorithm was implemented using doubles (64 bits) the largest input that could be given to the merge sort algorithm was 2^26. We made the assumption that each process has 4GB (2^35) of memory available (originally 8GB but have to account for libraries like MPI). The calculations are show below:
 * (size of type) $\times$ (input size) $\times$ (number of arrays held in memory) = memory used
