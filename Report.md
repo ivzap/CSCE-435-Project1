@@ -444,11 +444,11 @@ endf
 ## 3. Implementation Descriptions
 
 #### Radix Sort
-I struggled to find any correct implementations of parallel radix sort, so I developed my own. The core algorithm remains the same: find the maximum element, iterate over the digits, count the frequency of each digit, determine where each element should go, and repeat. The challenging part in the parallel version was determining where each element belongs. Specifically, we need to identify which processor to place the element in and its relative position within that processor. 
+I struggled to find any correct implementations of parallel radix sort, so I developed my own. The core algorithm remains the same: find the maximum element, iterate over the digits, count the frequency of each digit, determine where each element should go, and repeat. The challenging part in the parallel version was determining where each element belongs. Specifically, we need to identify which processor to place the element in and its relative position within that processor.
 
-I introduced a concept I call the "start" variable to handle this. The "start" represents where an element would be placed in a non-parallel version. We then determine the processor by calculating `start / arr_size` and the relative position by `start % arr_size`. 
+I introduced a concept I call the "start" variable to handle this. The "start" represents where an element would be placed in a non-parallel version. We then determine the processor by calculating `start / arr_size` and the relative position by `start % arr_size`.
 
-To compute the start values, we gather the digit counts for each processor. We begin with a base value of 0 and iterate through each digit for every processor, assigning a starting position for each digit based on the base. We then update the base by adding the count of elements for that digit. For example, if we have 10 elements, the new base becomes 10, and any further elements with that digit will be placed starting from this new base. 
+To compute the start values, we gather the digit counts for each processor. We begin with a base value of 0 and iterate through each digit for every processor, assigning a starting position for each digit based on the base. We then update the base by adding the count of elements for that digit. For example, if we have 10 elements, the new base becomes 10, and any further elements with that digit will be placed starting from this new base.
 
 At the end of this process, we have a `gathered_cnt[p][digit]` array, which tells each processor where to place elements with a specific digit. After placing an element within a processor, we shift the start value for that processor by one. This part of the algorithm was the most complex. The rest simply involves communicating between processors to place elements in the correct locations. We repeat this for each phase until all digits of the largest element are processed.
 
@@ -456,7 +456,7 @@ At the end of this process, we have a `gathered_cnt[p][digit]` array, which tell
 
 Sample Sort is an effective sorting algorithm for working in parallel. I began with implementing the algorithm with having the algorithm check if the provided array was below a threshold and given that it was it would began with using the quick sort algorithm. This quick sort algorithm I fully implemented without using the standard C library to gain a deeper understanding of how the elements in the array were being sorted. It begans by selecting a pivot point and comparing with elements until the random pivot point that was selected reaches the center of the list. Once the center has been reached it splits the array and the same process occurs recursively.
 When the array did not meet the threshold the array is split by how many elements there are by how many processors there are to determine how many elements are local to the processor. In other words how many local elements that the processors have to evaluate. These use splitters to divide the array into buckets to be sent to processes. The splitters were gathered to gather all the splitters that were created. The root process then broadcasts the pivots of all the local sections to all the processes. A global bucket list and local bucket list were created to store all the buckets that are evaluated. The local buckets range from specific points divided by the amount of processors even though the over sampling. Once the local buckets are gathered together into the list this list is then gathered using a vector to the global bucket list to be then quick sorted again to have the final array.
-This algorithm was immensely challenging for me given the complexity of the algorithm and MPI functionality being challenging. I was unaware that we were allowed to use the standard C library quick sort and implemented the algorithm from scratch at first. I had difficulty particularly with the gather functionality with the buckets. I managed to spend a lot of time on the implementation and attend office hours and get assistance from the TAs. I nearly completed the entire algorithm, however, unfortunately it was the final global bucket sort that I was unable to manage to figure out. My global bucket list was empty and I could not populate it correctly.  
+This algorithm was immensely challenging for me given the complexity of the algorithm and MPI functionality being challenging. I was unaware that we were allowed to use the standard C library quick sort and implemented the algorithm from scratch at first. I had difficulty particularly with the gather functionality with the buckets. I managed to spend a lot of time on the implementation and attend office hours and get assistance from the TAs. I nearly completed the entire algorithm, however, unfortunately it was the final global bucket sort that I was unable to manage to figure out. My global bucket list was empty and I could not populate it correctly.
 
 #### Merge Sort
 The parallel merge sort algorithm was implmented by having each process sort individual sections of an array then combining them into one sorted array in the final process. The combination of each process is done by combining the local arrays of process i with process i + active_procs / 2. This creates a logarithmic pattern of combination. The number of of active processes starts as n which is the total number of processes avaible, but it is divided in half after each level of combination. As the local arrays combine and become larger, the number of processes that are involved in communication shrinks. By the end, all local arrays have combined into one process. Because the entire array must fit into the memory of one processor in the end, both data initialization and correctness checking are done in one processor. Below is a visual representation of how the processors are combining the subarrays into one main array.
@@ -542,6 +542,35 @@ The parallel merge sort algorithm was implmented by having each process sort ind
 0.000 MPI_Initialized
 0.000 MPI_Finalized
 0.005 MPI_Comm_dup
+```
+
+#### Sample Sort
+```c
+0.550 main
+├─ 0.000 MPI_Init
+├─ 0.000 data_init_runtime
+├─ 0.006 comm
+│  ├─ 0.003 comm_large
+│  │  ├─ 0.002 MPI_Scatter
+│  │  ├─ 0.000 MPI_Gather
+│  │  └─ 0.001 MPI_Gatherv
+│  └─ 0.003 comm_small
+│     ├─ 0.003 MPI_Bcast
+│     └─ 0.000 MPI_Allgather
+├─ 0.000 MPI_Barrier
+├─ 0.001 comp
+│  ├─ 0.001 comp_large
+│  └─ 0.000 comp_small
+└─ 0.002 correctness_check
+0.002 MPI_Comm_dup
+0.000 MPI_Send
+0.000 MPI_Comm_free
+0.000 MPI_Recv
+0.000 MPI_Finalize
+0.000 MPI_Probe
+0.000 MPI_Initialized
+0.000 MPI_Get_count
+0.000 MPI_Finalized
 ```
 
 ### 3b. Collect Metadata
@@ -658,6 +687,10 @@ My radix sort implementation overall shows that it was able to succesfully sort 
 
 ![speedup_2^22_ex2](https://github.com/user-attachments/assets/1cc1a86b-076c-4a55-b9a0-4d04d3cc9f38)
 
+### Main
+![weak_scaling_ex4](https://github.com/user-attachments/assets/573665cc-8027-452e-889f-52460e0448cd)
+
+Something interesting to note is that in our random we tested for a small number of digits and it resulted in significantly less time required to sort then the reversed, and 1% disordered as radix is highly dependent on the max integer within our array.
 
 ### Merge Sort
 This implementation of merge sort has inherent limitations when it comes to parallelization. These limitations come from the fact that as the combination of subarrays occurs, the number of active processors decreases. When fewer processors are doing work, the burden of work on those processors increases. In the very last step of the algorithm two halves of the initial input are combined into one array. Thus, the algorithm is limited by memory. This implementation holds two arrays of size `input_size`. Because the algorithm was implemented using doubles (64 bits) the largest input that could be given to the merge sort algorithm was 2^26. We made the assumption that each process has 4GB (2^35) of memory available (originally 8GB but have to account for libraries like MPI). The calculations are show below:
@@ -665,7 +698,7 @@ This implementation of merge sort has inherent limitations when it comes to para
 * 64 $\times$ 2^26 $\times$ 2 = 2^33
 * 64 $\times$ 2^28 $\times$ 2 = 2^35
 
-These calculations show that the memory gets filled up when running with an input size of 2^28. 
+These calculations show that the memory gets filled up when running with an input size of 2^28.
 
 For the parallel merge sort algorithm, it is expected that we will not see major differences in the various input types. This is becuase the data is sent and received as well as traversed and "sorted" regardless of how it comes in. However, we do see a slight increase in computation time for the random input type. This is due to the high volume of `std::swap` operations required.
 
@@ -694,8 +727,8 @@ The figures below show the runtime of the communication portion of the algorithm
 ![merge_strong_comm_2^26](https://github.com/user-attachments/assets/624379bb-2eaa-466f-b014-63325c5e9316)
 
 
-
 These graphs are slightly more tricky to read compared to the computation graphs. This is due to the outliers present from the data collected. Multiple rounds of data tests were run as an attempt to remove these outlier points but they still remained. They occur mostly with the 128 and 256 processor tests, and it can not be said which input types they occur for most often. Aside from these outliers we do see a trend in the commuication time. For input sizes, 2^16, 2^18, 2^20, and 2^22 the communication times are similar (despite the outliers). This is expected for the smaller input sizes. However, as the input size increases to 2^24 and 2^26 we see an increase in communication time. This increase is still very uniform up until about 64 processors. This is when we jump to using many more nodes than before. Communication between nodes takes much longer than communication within one node. This is why we see so many wild data points at 64 processors and above. The graphs show a larger communication overhead for the larger input sizes. This makes sense as we are sending larger amounts of data. It can also be seen that communication time does not play a significant role in the algorithm when compared to computation (especially as input size increases) as merge sort does at most 10 communications in a single process (this occurs when we use 1024 processors). The input type has no affect on communication overhead, as the number of communications is logarithmically determined by the number of processors.
+
 
 #### Total Time
 By comparing the computation and communication times it is clear that the merge sort algorithm is dependent on the computation time for larger input sizes and communication for smaller input sizes. Below are graph showing the total time of the algorithm vs the number of processors. This is the computation time plus the communication time.
@@ -719,6 +752,7 @@ These plots confirm what was stated above, the larger input sizes have a signifi
 
 #### Speedup
 
+
 The speedup of the merge sort algorithm was calculated by taking the total time (which is the time it would take to run on one processor) and divding it by the max time/rank. Below are the graphs for the speedup vs the number of processors. 
 ![merge_speedup_2^16](https://github.com/user-attachments/assets/fd77689e-fc6b-4e72-b91a-7a77c203cfd6)
 ![merge_speedup_2^18](https://github.com/user-attachments/assets/5e9e990a-c856-4e80-99da-ff0cc799af0f)
@@ -730,5 +764,44 @@ The speedup of the merge sort algorithm was calculated by taking the total time 
 
 From these plots, it can be seen that the speedup increases  with the number of processes. It does not seem like we have hit a limitation for the parallelization of merge sort, however we are still limited by processor memory size (same as sequential merge sort). It is notable that on the 2^16 and 2^18 inputs sizes there seems to be more descrepancies in the speedup between the different input types, but I do not think this is caused by the change in input types. The speedups for each input size are roughly the same (maxing out around 600).
 
+
 Based on the graphs merge sort is a very parallelizable algorithm because it is computation heavy without a large requirement for communication. It's biggest limitation is the processor's memory. This does not allow parallel merge sort to sort anything above its sequential equivalent.
+
+## Bitonic Sort
+* My bitonic sort implementation had some peculiar behavior for high
+  processors, showing that even with large input sizes, not using 1024
+  processors might still be faster. I suspect this is because I use quicksort
+  to sort locally, and then bitonic merging is done between processes. Just
+  using quicksort might be faster than worrying about the heavy overhead for
+  communicating with lots of different processes. `comp` was still lower with
+  more processors since each processor was sorting less elements. My algorithm
+  was able to run 1024 processors with 2 ** 28 elements with only 8 GB of
+  memory, but due to various issues with grace including `hydra` and `oom`
+  errors that popped up in various areas (even as low as 32 processors, so I
+  don't think it was a memory issue since I can run 2 ** 28 and 1024 processors
+  successfully).
+* Note that I have only included successful runs for all data, since I didn't run perturbed until later on, due to queue issues I was not able to get very much data for perturbed.
+
+### Strong
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong/strong_65536.png)
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong/strong_262144.png)
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong/strong_1048576.png)
+
+### Strong Speedup
+#### 2 ** 16
+##### comm
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_65536_comm.png)
+##### comp
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_65536_comp.png)
+##### main
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_65536_main.png)
+
+### Weak
+#### random
+##### comm
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/weak/weak_random_comm.png)
+##### comp
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/weak/weak_random_comp.png)
+##### main
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/weak/weak_random_main.png)
 
