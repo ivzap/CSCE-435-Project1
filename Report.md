@@ -753,7 +753,7 @@ These plots confirm what was stated above, the larger input sizes have a signifi
 #### Speedup
 
 
-The speedup of the merge sort algorithm was calculated by taking the total time (which is the time it would take to run on one processor) and divding it by the max time/rank. Below are the graphs for the speedup vs the number of processors. 
+The speedup of the merge sort algorithm was calculated by taking the total time (which is the time it would take to run on one processor) and divding it by the max time/rank. Below are the graphs for the speedup vs the number of processors.
 ![merge_speedup_2^16](https://github.com/user-attachments/assets/fd77689e-fc6b-4e72-b91a-7a77c203cfd6)
 ![merge_speedup_2^18](https://github.com/user-attachments/assets/5e9e990a-c856-4e80-99da-ff0cc799af0f)
 ![merge_speedup_2^20](https://github.com/user-attachments/assets/663bd2a3-91a3-40ed-83e9-8ca4a22a0b59)
@@ -780,12 +780,17 @@ Based on the graphs merge sort is a very parallelizable algorithm because it is 
   errors that popped up in various areas (even as low as 32 processors, so I
   don't think it was a memory issue since I can run 2 ** 28 and 1024 processors
   successfully).
-* Note that I have only included successful runs for all data, since I didn't run perturbed until later on, due to queue issues I was not able to get very much data for perturbed.
+* Due to hydra issues, I wasn't able to collect all the data points but for the
+most part, everything is there
 
 ### Strong
 ![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong/strong_65536.png)
 ![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong/strong_262144.png)
 ![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong/strong_1048576.png)
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong/strong_4194304.png)
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong/strong_16777216.png)
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong/strong_67108864.png)
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong/strong_268435456.png)
 
 ### Strong Speedup
 #### 2 ** 16
@@ -796,7 +801,64 @@ Based on the graphs merge sort is a very parallelizable algorithm because it is 
 ##### main
 ![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_65536_main.png)
 
+#### 2 ** 18
+##### comm
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_262144_comm.png)
+##### comp
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_262144_comp.png)
+##### main
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_262144_main.png)
+
+
+#### 2 ** 20
+##### comm
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_1048576_comm.png)
+##### comp
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_1048576_comp.png)
+##### main
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_1048576_main.png)
+
+#### 2 ** 22
+##### comm
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_4194304_comm.png)
+##### comp
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_4194304_comp.png)
+##### main
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_4194304_main.png)
+
+#### 2 ** 24
+##### comm
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_16777216_comm.png)
+##### comp
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_16777216_comp.png)
+##### main
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_16777216_main.png)
+
+#### 2 ** 26
+##### comm
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_67108864_comm.png)
+##### comp
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_67108864_comp.png)
+##### main
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_67108864_main.png)
+
+#### 2 ** 28
+##### comm
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_268435456_comm.png)
+##### comp
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_268435456_comp.png)
+##### main
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/strong_speedup/strong_speedup_268435456_main.png)
+
 ### Weak
+#### sorted
+##### comm
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/weak/weak_sorted_comm.png)
+##### comp
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/weak/weak_sorted_comp.png)
+##### main
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/weak/weak_sorted_main.png)
+
 #### random
 ##### comm
 ![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/weak/weak_random_comm.png)
@@ -804,4 +866,20 @@ Based on the graphs merge sort is a very parallelizable algorithm because it is 
 ![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/weak/weak_random_comp.png)
 ##### main
 ![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/weak/weak_random_main.png)
+
+#### reversed
+##### comm
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/weak/weak_reversed_comm.png)
+##### comp
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/weak/weak_reversed_comp.png)
+##### main
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/weak/weak_reversed_main.png)
+
+#### perturbed
+##### comm
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/weak/weak_perturbed_comm.png)
+##### comp
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/weak/weak_perturbed_comp.png)
+##### main
+![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/weak/weak_perturbed_main.png)
 
