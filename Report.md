@@ -732,9 +732,9 @@ The nature of our weak scaling plots can be best described as a exponential deca
 
 ### Merge Sort
 This implementation of merge sort has inherent limitations when it comes to parallelization. These limitations come from the fact that as the combination of subarrays occurs, the number of active processors decreases. When fewer processors are doing work, the burden of work on those processors increases. In the very last step of the algorithm two halves of the initial input are combined into one array. Thus, the algorithm is limited by memory. This implementation holds two arrays of size `input_size`. Because the algorithm was implemented using doubles (64 bits) the largest input that could be given to the merge sort algorithm was 2^26. We made the assumption that each process has 4GB (2^35) of memory available (originally 8GB but have to account for libraries like MPI). The calculations are show below:
-* (size of type) $\times$ (input size) $\times$ (number of arrays held in memory) = memory used
-* 64 $\times$ 2^26 $\times$ 2 = 2^33
-* 64 $\times$ 2^28 $\times$ 2 = 2^35
+* (size of type) x (input size) x (number of arrays held in memory) = memory used
+* 64 x 2^26 x 2 = 2^33
+* 64 x 2^28 x 2 = 2^35
 
 These calculations show that the memory gets filled up when running with an input size of 2^28.
 
