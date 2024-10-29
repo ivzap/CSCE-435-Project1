@@ -883,3 +883,65 @@ most part, everything is there
 ##### main
 ![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/weak/weak_perturbed_main.png)
 
+## Report
+### Radix
+#### Speedup
+The speedup for radix sort was by far the best out of all the algorithms we implemented. Radix sort uses a non comparative algorithm, which means that there is less dependency between elements which in turn means less computation and communication. Less computation means less clock cycles which means the cpu can spend time on other useful things, and the reduction of communication reduces network i/o overheard.
+
+However, speedup is not everything, as can be seen in the Total Time figures. That is while radix had the best speedup it has the largest sort time compared to the others. It required significant resources to be able to eventually compete with the other sorting algorithms speeds. Its also worthy to mention that my implementation was not the most optimal. I came up with it during a couple sessions of thinking. If interested, I explain how I came up with my solution later in the report.
+
+![image](https://github.com/user-attachments/assets/3baf5cdf-68f8-473f-9658-525ac8ad2d97)
+![image](https://github.com/user-attachments/assets/d0d5ebba-a7b6-4f7b-96ed-f8167eddb01d)
+![image](https://github.com/user-attachments/assets/dc44c36b-e80d-4499-8cd1-d27ecd6c52b6)
+
+
+#### Total Time
+As mentioned within the speedup, total time was quite high for radix sort. The large amount of sort time is highly attributed to two things:
+1. Memory management
+2. Network communication
+
+My implementation was not perfect by any means as I did not optimize my memory usage. I would prepare a worst case fixed buffer of jobs to send to different workers which told the worker to put a value somewhere within its current array which would be the new sorted position by the current digit. Creating a fixed buffer is not optimal with respect to memory usage as it has an average memory usage of the worst possible case, its constant. Instead what I should have done was to implement a batching system where I could batch the jobs allowing each process to only require a small amount of memory at a time instead up piling up a massive job buffer. The consequence of this part of my implementation was missing data points in my experiments as I would frequently run out of memory on a small number of processors. The smaller the process the more data it must hold in memory before communicating which also resulted in MPI running out of memory frequently.
+
+An example of MPI running out of memory can be seen in the Figure 2. of this section. Notice how **only** the sorted input was able to run on the smaller processors. This is because if something is sorted I **do not** communicate with the other processors using MPI thus we avoid MPI running out of memory because it doesn't need to maintain any internal buffers. 
+
+![image](https://github.com/user-attachments/assets/812dd26f-e5b3-44df-b472-e6825f836cb3)
+![image](https://github.com/user-attachments/assets/58b5b5c3-ed10-4af1-8164-0daec8c2c0bb)
+
+
+#### Weak Scaling
+My weak scaling graphs show some of the communication and memory overheads I was talking about in prior sections. As we distribute the work across more processors we continue to decline in average time per rank. As we increased the input size and most notably with 2^26 we saw that MPI or Grace would run out of memory. It is more likely that we are simply running out of memory on grace as even sorted has problems getting data points for the smaller processor counts with large input sizes. Sorted inputs have almost no communication as they are already in sorted order as such no changes need to take place.
+
+The nature of our weak scaling plots can be best described as a exponential decay. As we increased the number of processors, the average time per rank decreased. This matches are previous claims about having a high speedup.
+
+![image](https://github.com/user-attachments/assets/a707a008-c72a-4346-a55d-37aeea3f4626)
+![image](https://github.com/user-attachments/assets/388606f7-056b-49b9-b752-bd11c9613d1b)
+![image](https://github.com/user-attachments/assets/1640423c-f49f-4201-9a38-098d0925b8bd)
+
+
+#### Implementation Details
+I will now explain how I implemented radix sort parallelized using the MPI API. 
+
+I first looked up the sequential sorting algorithm for radix and studied it heavily, making sure I understood what it was doing. Next I looked up online implementations for parallel radix but couldn't find anything, well anything that was of any good quality, pretty much everyone did it incorrectly. I got tired of reading bad code so I then started brainstorming how I could come up with the parallel version of radix sort myself. There were a couple of obstacles, the main ones were:
+1. How to "index" into other arrays, i.e if I was in processor i and wanted to communicate something to processor i+1 how would I do such a thing?
+2.  How to find where we should place a element?
+
+I solved these both by realizing that each digit will have some starting position to place elements from. For example if the digit was 0 then we would place this element at the very left of the array. We also know that each digit in some stage will have a "area" in the array. So if we had ten 0s found for some stage then we know for sure that these 10 elements fit in the addresses 0-9, where the 10th address represents the next digits start position. If the next digit didn't have any digits for that bucket then we would have the start represent the start of the next non zero frequency digit. I repeat this for every digit.
+
+This can all be visualized below, where the '^' character represents the start position for each digit:
+
+```
+arr = [8,1,1,0,0,0,0,1,1,9,9,9]
+single sort stage...
+000011118999 
+^   ^   ^^
+```
+
+The only problem is now the array is split so we need to be able to answer the question: If I have a element with digit x on processor p where do I place it?
+
+We can solve this by creating a global prefix start. Where prefix_sum\[p]\[d] represents the starting position for process p and digit d. The reason this is called a prefix sum is because we must adjust the start of prefix_sum\[p+1]\[d] by how many integers were in the bucket prefix_sum\[p]\[d], effectively giving precedence to the digits in the smaller processors which is what we want inorder to maintain order.
+
+Now we know in O(1) time **where** something must be placed and its relative position in that processor.
+
+Now to actually change the position of some element we do start / arr_size where arr_size is the number of elements in each process. The relative position in that process is found by doing start % arr_size. Once we do this for every element that needs to be moved in the current process to another we use MPI_Send() to distribute it across other processes. This step used up alot of memory because I sent three integers (processor_dest, relative_position, value). Again I also should have used a batching system and MPI_Send() more frequently to reduce memory usage.
+
+
