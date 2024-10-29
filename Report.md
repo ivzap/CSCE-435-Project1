@@ -921,5 +921,10 @@ most part, everything is there
 ##### main
 ![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/weak/weak_perturbed_main.png)
 
+## Algorithm Comparisons
+
+![image](https://github.com/user-attachments/assets/d0ed7aea-3a57-4ba2-81b9-aea5c2001afe)
+
+![image](https://github.com/user-attachments/assets/5e74b3e8-bc0c-4867-af1b-6f518de87c68)
 
 
