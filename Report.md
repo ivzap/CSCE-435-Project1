@@ -923,6 +923,20 @@ most part, everything is there
 
 ## Algorithm Comparisons
 
+The following two graphs compare the speedup and overall time of all the algorithms. Its important to not only look at the speedup of an algorithm but the total time because, as we will see, radix while it has an excellent linear speedup it has the worst sort time compared to all the other algorithms. 
+
+### Bitonic
+Since bitonic sorting is designed for parallelization, the speedup was significant, as we only communicate parts of the local array, except in the worst-case scenario. The communication overhead was approximately balanced with the computation by further splitting the array, resulting in a linear speedup as the number of processors increased.
+
+### Merge
+The algorithm exhibited linear speedup up to a certain threshold, after which it began to show diminishing returns. This is because merge sort is logarithmic in nature, and as we increase the number of processors, more processors become underutilized as the algorithm progresses. Consequently, we observe a drop-off in performance as the number of processors increases.
+
+### Sample
+Initially, we observed a gradual decrease in average time per rank, but once the algorithm reached around 512 processes, there was a significant drop. This could be due to load imbalances, where too many processors result in each holding only a very small amount of elements. Each of these processors must then communicate with a global list, further increasing communication overhead. Additionally, this issue could be caused by poor implementation of communicators, such as not using an extra barrier to ensure all processors are synchronized.
+
+### Radix
+Radix sorting exhibits a highly linear speedup because it is a non-comparative algorithm, which reduces computation overhead and, to some extent, the need for communication between processors. Radix sorting also distributed work evenly across multiple processors, further supporting the substantial speedup as we increased the number of processors. While the speedup was impressive, the total time to sort remained high. This highlights the importance of not evaluating an algorithm based solely on a single statistic.
+
 ![image](https://github.com/user-attachments/assets/d0ed7aea-3a57-4ba2-81b9-aea5c2001afe)
 
 ![image](https://github.com/user-attachments/assets/5e74b3e8-bc0c-4867-af1b-6f518de87c68)
