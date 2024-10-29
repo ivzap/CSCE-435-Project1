@@ -8,17 +8,18 @@
 #include <caliper/cali.h>
 #include <caliper/cali-manager.h>
 #include <adiak.hpp>
+
 #define SEED 100
 #define OUTPUT 1
 #define CHECK 1
 
 double get_time() {
-   struct timeval tv; 
-   int ok = gettimeofday(&tv, NULL);
-   if (ok < 0) { 
-       printf("gettimeofday error");  
-   }
-   return (tv.tv_sec * 1.0 + tv.tv_usec * 1.0E-6); 
+    struct timeval tv;
+    int ok = gettimeofday(&tv, NULL);
+    if (ok < 0) {
+        printf("gettimeofday error");
+    }
+    return (tv.tv_sec * 1.0 + tv.tv_usec * 1.0E-6);
 }
 
 int compare_func(const void *num1, const void *num2) {
@@ -27,18 +28,25 @@ int compare_func(const void *num1, const void *num2) {
     return (*n1 > *n2) - (*n1 < *n2);
 }
 
+bool isSorted(unsigned long long arr[], unsigned long length) {
+    for (unsigned long i = 1; i < length; i++) {
+        if (arr[i] < arr[i - 1]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 int main(int argc, char *argv[]) {
     int i, j, input_size, bucket_count, total_count;
     double start_time, end_time;
-    unsigned long long *split_points, *elements, *samples, **buckets; 
+    unsigned long long *split_points, *elements, *samples, **buckets;
     unsigned long long *my_elements, *my_samples;
     int my_rank, total_procs;
     unsigned long long check, check_before, global_check;
     int *bucket_sizes;
     int *recv_count, *displ;
     bool checkMax, global_checkMax;
-
-    adiak::init(NULL);  // Pass NULL for MPI_COMM_WORLD
 
     cali::ConfigManager mgr;
     mgr.add("runtime-report");
@@ -55,27 +63,34 @@ int main(int argc, char *argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &total_procs);
 
+    adiak::init(NULL);
+    adiak::launchdate();
+    adiak::libraries();
+    adiak::cmdline();
+    adiak::clustername();
+    adiak::value("algorithm", "sample_sort");
+    adiak::value("programming_model", "mpi");
+    adiak::value("data_type", "unsigned long long");
+    adiak::value("size_of_data_type", sizeof(unsigned long long));
+    adiak::value("input_size", input_size);
+    adiak::value("num_procs", total_procs);
+    adiak::value("scalability", "strong");
+    adiak::value("group_num", "6");
+    adiak::value("implementation_source", "online");
+
     bucket_count = total_procs;
     input_size = atoi(argv[1]);
-
-    if (my_rank == 0) {
-        adiak::value("algorithm", "SampleSort");
-        adiak::value("programming_model", "MPI");
-        adiak::value("data_type", "unsigned long long");
-        adiak::value("input_size", input_size);
-        adiak::value("num_procs", total_procs);
-        adiak::value("scalability", "strong");
-    }
 
     if(my_rank == 0) {
         CALI_MARK_BEGIN("data_init_runtime");
         elements = (unsigned long long*)malloc(sizeof(unsigned long long) * input_size);
         recv_count = (int*)malloc(sizeof(int) * bucket_count);
         displ = (int*)malloc(sizeof(int) * bucket_count);
-        srand(SEED);
+
         for(i = 0; i < input_size; i++) {
-            elements[i] = rand() % 100;
+            elements[i] = input_size - i;  // Initialize in reverse order
         }
+
         CALI_MARK_END("data_init_runtime");
     }
 
@@ -84,7 +99,7 @@ int main(int argc, char *argv[]) {
     split_points = (unsigned long long*)malloc(sizeof(unsigned long long) * bucket_count);
     samples = (unsigned long long*)malloc(sizeof(unsigned long long) * bucket_count * (bucket_count - 1));
     buckets = (unsigned long long**)malloc(sizeof(unsigned long long*) * bucket_count);
-    
+
     for(i = 0; i < bucket_count; i++) {
         buckets[i] = (unsigned long long*)malloc(sizeof(unsigned long long) * 2 * input_size / bucket_count);
     }
@@ -186,11 +201,18 @@ int main(int argc, char *argv[]) {
     if(my_rank == 0) {
         CALI_MARK_BEGIN("comp");
         CALI_MARK_BEGIN("comp_large");
-        qsort(elements, input_size, sizeof(unsigned long long), compare_func);  
+        qsort(elements, input_size, sizeof(unsigned long long), compare_func);
         CALI_MARK_END("comp_large");
         CALI_MARK_END("comp");
 
         CALI_MARK_BEGIN("correctness_check");
+
+        if (isSorted(elements, input_size)) {
+            printf("Array is sorted correctly!\n");
+        } else {
+            printf("Array is NOT sorted correctly!\n");
+        }
+
         FILE *outputFile = fopen("sorted_output.txt", "w");
         if(outputFile != NULL) {
             for(i = 0; i < input_size; i++) {
