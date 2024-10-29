@@ -444,13 +444,30 @@ endf
 ## 3. Implementation Descriptions
 
 #### Radix Sort
-I struggled to find any correct implementations of parallel radix sort, so I developed my own. The core algorithm remains the same: find the maximum element, iterate over the digits, count the frequency of each digit, determine where each element should go, and repeat. The challenging part in the parallel version was determining where each element belongs. Specifically, we need to identify which processor to place the element in and its relative position within that processor.
+I will now explain how I implemented radix sort parallelized using the MPI API. 
 
-I introduced a concept I call the "start" variable to handle this. The "start" represents where an element would be placed in a non-parallel version. We then determine the processor by calculating `start / arr_size` and the relative position by `start % arr_size`.
+I first looked up the sequential sorting algorithm for radix and studied it heavily, making sure I understood what it was doing. Next I looked up online implementations for parallel radix but couldn't find anything, well anything that was of any good quality, pretty much everyone did it incorrectly. I got tired of reading bad code so I then started brainstorming how I could come up with the parallel version of radix sort myself. There were a couple of obstacles, the main ones were:
+1. How to "index" into other arrays, i.e if I was in processor i and wanted to communicate something to processor i+1 how would I do such a thing?
+2.  How to find where we should place a element?
 
-To compute the start values, we gather the digit counts for each processor. We begin with a base value of 0 and iterate through each digit for every processor, assigning a starting position for each digit based on the base. We then update the base by adding the count of elements for that digit. For example, if we have 10 elements, the new base becomes 10, and any further elements with that digit will be placed starting from this new base.
+I solved these both by realizing that each digit will have some starting position to place elements from. For example if the digit was 0 then we would place this element at the very left of the array. We also know that each digit in some stage will have a "area" in the array. So if we had ten 0s found for some stage then we know for sure that these 10 elements fit in the addresses 0-9, where the 10th address represents the next digits start position. If the next digit didn't have any digits for that bucket then we would have the start represent the start of the next non zero frequency digit. I repeat this for every digit.
 
-At the end of this process, we have a `gathered_cnt[p][digit]` array, which tells each processor where to place elements with a specific digit. After placing an element within a processor, we shift the start value for that processor by one. This part of the algorithm was the most complex. The rest simply involves communicating between processors to place elements in the correct locations. We repeat this for each phase until all digits of the largest element are processed.
+This can all be visualized below, where the '^' character represents the start position for each digit:
+
+```
+arr = [8,1,1,0,0,0,0,1,1,9,9,9]
+single sort stage...
+000011118999 
+^   ^   ^^
+```
+
+The only problem is now the array is split so we need to be able to answer the question: If I have a element with digit x on processor p where do I place it?
+
+We can solve this by creating a global prefix start. Where prefix_sum\[p]\[d] represents the starting position for process p and digit d. The reason this is called a prefix sum is because we must adjust the start of prefix_sum\[p+1]\[d] by how many integers were in the bucket prefix_sum\[p]\[d], effectively giving precedence to the digits in the smaller processors which is what we want inorder to maintain order.
+
+Now we know in O(1) time **where** something must be placed and its relative position in that processor.
+
+Now to actually change the position of some element we do start / arr_size where arr_size is the number of elements in each process. The relative position in that process is found by doing start % arr_size. Once we do this for every element that needs to be moved in the current process to another we use MPI_Send() to distribute it across other processes. This step used up alot of memory because I sent three integers (processor_dest, relative_position, value). Again I also should have used a batching system and MPI_Send() more frequently to reduce memory usage.
 
 #### Sample Sort
 
@@ -677,20 +694,41 @@ implementation_source	online
 ### Radix Sort
 My radix sort implementation overall shows that it was able to succesfully sort in parallel various input size but also showed some of its limitations. The first limitation is that a high amount of memory will be required when the processor arrays arent sorted, as each one element that must be placed in a different processor must be communicated to such processor. During experimentation I frequently saw for low processor count that MPI would run out of memory as each processor requires more and more memory. To avoid this limitation we could reimpliment the algorithm to communicate data in batches as this would reduce the stress on the internal MPI message buffers and our local memory. Another limitation comes from the fact that we need to create a duplicate temp array which can double our memory usage, this cannot be avoided as we need somewhere to store the elements without modifing the current array. Other issues I saw were with large processes, I would get HYDRA errors, but it turns out this is due to a faulty network for the cluster.
 
-#### Comm
+### Radix
+#### Speedup
+The speedup for radix sort was by far the best out of all the algorithms we implemented. Radix sort uses a non comparative algorithm, which means that there is less dependency between elements which in turn means less computation and communication. Less computation means less clock cycles which means the cpu can spend time on other useful things, and the reduction of communication reduces network i/o overheard.
 
-![strong_scaling_ex1](https://github.com/user-attachments/assets/abb4ddfd-7a23-426c-8826-42711647780b)
+However, speedup is not everything, as can be seen in the Total Time figures. That is while radix had the best speedup it has the largest sort time compared to the others. It required significant resources to be able to eventually compete with the other sorting algorithms speeds. Its also worthy to mention that my implementation was not the most optimal. I came up with it during a couple sessions of thinking. If interested, I explain how I came up with my solution later in the report.
 
-![weak_scaling_ex2](https://github.com/user-attachments/assets/6c1cefb8-2865-4c5f-b4df-59f98fb3eb57)
+![image](https://github.com/user-attachments/assets/3baf5cdf-68f8-473f-9658-525ac8ad2d97)
+![image](https://github.com/user-attachments/assets/d0d5ebba-a7b6-4f7b-96ed-f8167eddb01d)
+![image](https://github.com/user-attachments/assets/dc44c36b-e80d-4499-8cd1-d27ecd6c52b6)
 
-![weak_scaling_ex3](https://github.com/user-attachments/assets/24e3e42e-1124-4bf3-b259-3528903aafbf)
 
-![speedup_2^22_ex2](https://github.com/user-attachments/assets/1cc1a86b-076c-4a55-b9a0-4d04d3cc9f38)
+#### Total Time
+As mentioned within the speedup, total time was quite high for radix sort. The large amount of sort time is highly attributed to two things:
+1. Memory management
+2. Network communication
 
-### Main
-![weak_scaling_ex4](https://github.com/user-attachments/assets/573665cc-8027-452e-889f-52460e0448cd)
+My implementation was not perfect by any means as I did not optimize my memory usage. I would prepare a worst case fixed buffer of jobs to send to different workers which told the worker to put a value somewhere within its current array which would be the new sorted position by the current digit. Creating a fixed buffer is not optimal with respect to memory usage as it has an average memory usage of the worst possible case, its constant. Instead what I should have done was to implement a batching system where I could batch the jobs allowing each process to only require a small amount of memory at a time instead up piling up a massive job buffer. The consequence of this part of my implementation was missing data points in my experiments as I would frequently run out of memory on a small number of processors. The smaller the process the more data it must hold in memory before communicating which also resulted in MPI running out of memory frequently.
 
-Something interesting to note is that in our random we tested for a small number of digits and it resulted in significantly less time required to sort then the reversed, and 1% disordered as radix is highly dependent on the max integer within our array.
+An example of MPI running out of memory can be seen in the Figure 2. of this section. Notice how **only** the sorted input was able to run on the smaller processors. This is because if something is sorted I **do not** communicate with the other processors using MPI thus we avoid MPI running out of memory because it doesn't need to maintain any internal buffers. 
+
+![image](https://github.com/user-attachments/assets/812dd26f-e5b3-44df-b472-e6825f836cb3)
+![image](https://github.com/user-attachments/assets/58b5b5c3-ed10-4af1-8164-0daec8c2c0bb)
+
+
+#### Weak Scaling
+My weak scaling graphs show some of the communication and memory overheads I was talking about in prior sections. As we distribute the work across more processors we continue to decline in average time per rank. As we increased the input size and most notably with 2^26 we saw that MPI or Grace would run out of memory. It is more likely that we are simply running out of memory on grace as even sorted has problems getting data points for the smaller processor counts with large input sizes. Sorted inputs have almost no communication as they are already in sorted order as such no changes need to take place.
+
+The nature of our weak scaling plots can be best described as a exponential decay. As we increased the number of processors, the average time per rank decreased. This matches are previous claims about having a high speedup.
+
+![image](https://github.com/user-attachments/assets/a707a008-c72a-4346-a55d-37aeea3f4626)
+![image](https://github.com/user-attachments/assets/388606f7-056b-49b9-b752-bd11c9613d1b)
+![image](https://github.com/user-attachments/assets/1640423c-f49f-4201-9a38-098d0925b8bd)
+
+
+
 
 ### Merge Sort
 This implementation of merge sort has inherent limitations when it comes to parallelization. These limitations come from the fact that as the combination of subarrays occurs, the number of active processors decreases. When fewer processors are doing work, the burden of work on those processors increases. In the very last step of the algorithm two halves of the initial input are combined into one array. Thus, the algorithm is limited by memory. This implementation holds two arrays of size `input_size`. Because the algorithm was implemented using doubles (64 bits) the largest input that could be given to the merge sort algorithm was 2^26. We made the assumption that each process has 4GB (2^35) of memory available (originally 8GB but have to account for libraries like MPI). The calculations are show below:
@@ -883,65 +921,5 @@ most part, everything is there
 ##### main
 ![image](https://github.com/ivzap/CSCE-435-Project1/blob/main/images/bitonic/weak/weak_perturbed_main.png)
 
-## Report
-### Radix
-#### Speedup
-The speedup for radix sort was by far the best out of all the algorithms we implemented. Radix sort uses a non comparative algorithm, which means that there is less dependency between elements which in turn means less computation and communication. Less computation means less clock cycles which means the cpu can spend time on other useful things, and the reduction of communication reduces network i/o overheard.
-
-However, speedup is not everything, as can be seen in the Total Time figures. That is while radix had the best speedup it has the largest sort time compared to the others. It required significant resources to be able to eventually compete with the other sorting algorithms speeds. Its also worthy to mention that my implementation was not the most optimal. I came up with it during a couple sessions of thinking. If interested, I explain how I came up with my solution later in the report.
-
-![image](https://github.com/user-attachments/assets/3baf5cdf-68f8-473f-9658-525ac8ad2d97)
-![image](https://github.com/user-attachments/assets/d0d5ebba-a7b6-4f7b-96ed-f8167eddb01d)
-![image](https://github.com/user-attachments/assets/dc44c36b-e80d-4499-8cd1-d27ecd6c52b6)
-
-
-#### Total Time
-As mentioned within the speedup, total time was quite high for radix sort. The large amount of sort time is highly attributed to two things:
-1. Memory management
-2. Network communication
-
-My implementation was not perfect by any means as I did not optimize my memory usage. I would prepare a worst case fixed buffer of jobs to send to different workers which told the worker to put a value somewhere within its current array which would be the new sorted position by the current digit. Creating a fixed buffer is not optimal with respect to memory usage as it has an average memory usage of the worst possible case, its constant. Instead what I should have done was to implement a batching system where I could batch the jobs allowing each process to only require a small amount of memory at a time instead up piling up a massive job buffer. The consequence of this part of my implementation was missing data points in my experiments as I would frequently run out of memory on a small number of processors. The smaller the process the more data it must hold in memory before communicating which also resulted in MPI running out of memory frequently.
-
-An example of MPI running out of memory can be seen in the Figure 2. of this section. Notice how **only** the sorted input was able to run on the smaller processors. This is because if something is sorted I **do not** communicate with the other processors using MPI thus we avoid MPI running out of memory because it doesn't need to maintain any internal buffers. 
-
-![image](https://github.com/user-attachments/assets/812dd26f-e5b3-44df-b472-e6825f836cb3)
-![image](https://github.com/user-attachments/assets/58b5b5c3-ed10-4af1-8164-0daec8c2c0bb)
-
-
-#### Weak Scaling
-My weak scaling graphs show some of the communication and memory overheads I was talking about in prior sections. As we distribute the work across more processors we continue to decline in average time per rank. As we increased the input size and most notably with 2^26 we saw that MPI or Grace would run out of memory. It is more likely that we are simply running out of memory on grace as even sorted has problems getting data points for the smaller processor counts with large input sizes. Sorted inputs have almost no communication as they are already in sorted order as such no changes need to take place.
-
-The nature of our weak scaling plots can be best described as a exponential decay. As we increased the number of processors, the average time per rank decreased. This matches are previous claims about having a high speedup.
-
-![image](https://github.com/user-attachments/assets/a707a008-c72a-4346-a55d-37aeea3f4626)
-![image](https://github.com/user-attachments/assets/388606f7-056b-49b9-b752-bd11c9613d1b)
-![image](https://github.com/user-attachments/assets/1640423c-f49f-4201-9a38-098d0925b8bd)
-
-
-#### Implementation Details
-I will now explain how I implemented radix sort parallelized using the MPI API. 
-
-I first looked up the sequential sorting algorithm for radix and studied it heavily, making sure I understood what it was doing. Next I looked up online implementations for parallel radix but couldn't find anything, well anything that was of any good quality, pretty much everyone did it incorrectly. I got tired of reading bad code so I then started brainstorming how I could come up with the parallel version of radix sort myself. There were a couple of obstacles, the main ones were:
-1. How to "index" into other arrays, i.e if I was in processor i and wanted to communicate something to processor i+1 how would I do such a thing?
-2.  How to find where we should place a element?
-
-I solved these both by realizing that each digit will have some starting position to place elements from. For example if the digit was 0 then we would place this element at the very left of the array. We also know that each digit in some stage will have a "area" in the array. So if we had ten 0s found for some stage then we know for sure that these 10 elements fit in the addresses 0-9, where the 10th address represents the next digits start position. If the next digit didn't have any digits for that bucket then we would have the start represent the start of the next non zero frequency digit. I repeat this for every digit.
-
-This can all be visualized below, where the '^' character represents the start position for each digit:
-
-```
-arr = [8,1,1,0,0,0,0,1,1,9,9,9]
-single sort stage...
-000011118999 
-^   ^   ^^
-```
-
-The only problem is now the array is split so we need to be able to answer the question: If I have a element with digit x on processor p where do I place it?
-
-We can solve this by creating a global prefix start. Where prefix_sum\[p]\[d] represents the starting position for process p and digit d. The reason this is called a prefix sum is because we must adjust the start of prefix_sum\[p+1]\[d] by how many integers were in the bucket prefix_sum\[p]\[d], effectively giving precedence to the digits in the smaller processors which is what we want inorder to maintain order.
-
-Now we know in O(1) time **where** something must be placed and its relative position in that processor.
-
-Now to actually change the position of some element we do start / arr_size where arr_size is the number of elements in each process. The relative position in that process is found by doing start % arr_size. Once we do this for every element that needs to be moved in the current process to another we use MPI_Send() to distribute it across other processes. This step used up alot of memory because I sent three integers (processor_dest, relative_position, value). Again I also should have used a batching system and MPI_Send() more frequently to reduce memory usage.
 
 
